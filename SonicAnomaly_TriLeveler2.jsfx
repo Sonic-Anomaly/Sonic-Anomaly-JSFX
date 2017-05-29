@@ -1,0 +1,830 @@
+desc:TriLeveler2
+version: 1.0
+author: SonicAnomaly
+changelog: init
+provides: trileveler_gfx/*
+	docs/TriLeveler2.pdf
+
+/*********************************************
+Copyright (C) 2017 Sonic Anomaly.
+License: http://sonic.supermaailma.net/license
+*********************************************/
+
+EffectName: TriLeveler 2
+VendorString: Sonic Anomaly
+VendorVersion: 1000
+UniqueId: '3LE2'
+
+slider1:0<-20,20,0.5>-Input Trim [dB]
+slider2:-23<-46,0,1>-Target LUFS
+slider3:-40<-80,0,1>-Noise Floor [dBfs]
+slider4:500<20,2000,10>-Gate Speed
+slider5:1<0,1,1>-Automatic Trim
+slider6:0<0,1,0.1>-HPF
+slider7:1<0,1,1>-Automatic Threshold
+
+slider10:10<0,20,1>-Fast Dynamics Max Attenuation
+slider11:0<0,20,1>-Fast Dynamics Max Gain
+slider12:10<0,20,1>-Med Dynamics Max Attenuation
+slider13:10<0,20,1>-Med Dynamics Max Gain
+slider14:20<0,20,1>-Slow Dynamics Max Attenuation
+slider15:20<0,20,1>-Slow Dynamics Max Gain
+
+slider20:0<-3,3,0.1>-Output Trim [dB]
+
+filename:0,trileveler_gfx/knob_sm.png
+filename:1,trileveler_gfx/bg.png
+filename:2,trileveler_gfx/conf.png
+resource:0,1,2
+
+@init
+
+!"#define VAL(A) (A)" "//";
+
+buildStr = "build 170407";
+
+function Interpolate(A, B, X) (
+  (A * (1 - X) + B * X);
+);
+
+function DelayInit(start,end)
+(
+  this.sloop = this.splay = start;
+  this.length = end-start;
+);
+
+function Delay(input)
+(
+  this.sloop[this.sindex] = input;
+  this.sindex += 1;
+  this.sindex > this.length ? this.sindex = 0;
+  this.splay[this.sindex];
+);
+
+function FilterHSInit(freq,Q,gain)
+instance(omega,tsin,tcos,alpha,b0,b1,b2,a0,a1,a2,A,beta)
+(
+  Q = max(Q,0.01);
+  Q = min(Q,10);
+  freq = max(freq,0.1);
+  freq = min(freq,srate/2);
+
+  A = pow(10.0,(gain/40.0));
+  omega = 2*$pi*freq/srate;
+  tsin = sin(omega);
+  tcos = cos(omega);
+  alpha = tsin/(2.0*Q);
+  beta =sqrt(A)/Q;
+  
+  b0 = (A*((A+1.0)+(A-1.0)*tcos+beta*tsin));
+  b1 = (-2.0*A*((A-1.0)+(A+1.0)*tcos));
+  b2 = (A*((A+1.0)+(A-1.0)*tcos-beta*tsin));
+  a0 = ((A+1.0)-(A-1.0)*tcos+beta*tsin);
+  a1 = (2.0*((A-1.0)-(A+1.0)*tcos));
+  a2 = ((A+1.0)-(A-1.0)*tcos-beta*tsin);
+
+  b0 /= a0;
+  b1 /= a0;
+  b2 /= a0;
+  a1 /= a0;
+  a2 /= a0;
+);
+
+function FilterLPInit(freq,Q)
+instance(omega,tsin,tcos,alpha,b0,b1,b2,a0,a1,a2)
+(
+  Q = max(Q,0.01);
+  Q = min(Q,10);
+  freq = max(freq,0.1);
+  freq = min(freq,srate/2);
+
+  omega = 2*$pi*freq/srate;
+  tsin = sin(omega);
+  tcos = cos(omega);
+  alpha = tsin/(2.0*Q);
+  
+  b0 = (1-tcos)/2;
+  b1 = 1-tcos;
+  b2 = (1-tcos)/2;
+  a0 = 1+alpha;
+  a1 = -2*tcos;
+  a2 = 1-alpha;
+  
+  b0 /= a0;
+  b1 /= a0;
+  b2 /= a0;
+  a1 /= a0;
+  a2 /= a0;  
+);
+
+function FilterHPInit(freq,Q)
+instance(omega,tsin,tcos,alpha,b0,b1,b2,a0,a1,a2)
+(
+  Q = max(Q,0.01);
+  Q = min(Q,10);
+  freq = max(freq,0.1);
+  freq = min(freq,srate/2);
+
+  omega = 2*$pi*freq/srate;
+  tsin = sin(omega);
+  tcos = cos(omega);
+  alpha = tsin/(2.0*Q);
+
+  b0 = (1+tcos)/2;
+  b1 = -(1+tcos);
+  b2 = (1+tcos)/2;
+  a0 = 1+alpha;
+  a1 = -2*tcos;
+  a2 = 1-alpha;
+  
+  b0 /= a0;
+  b1 /= a0;
+  b2 /= a0;
+  a1 /= a0;
+  a2 /= a0;    
+);
+
+function Filter(input)
+instance(mX1,mX2,mY1,mY2,b0,b1,b2,a0,a1,a2,output)
+(
+  output = b0*input + b1*mX1 + b2*mX2 - a1*mY1 - a2*mY2;
+  mX2 = mX1;
+  mX1 = input;
+  mY2 = mY1;
+  mY1 = output;
+);
+
+function KFilterInit()
+(
+  this.kf0.FilterHPInit(70 * 2,0.7);
+  this.kf1.FilterHSInit(1500 * 2,0.7,4);
+  this.comp = 0.940;
+);
+
+function KFilter(input)
+(
+  eco.halfEnabled ? (
+    this.in = this.kf0.Filter(input);
+    this.in = this.kf1.Filter(this.in);
+    this.in *= this.comp;
+  );
+  this.in;
+);
+
+function KFilterInit_Slow()
+(
+  this.kf0.FilterHPInit(70,0.7);
+  this.kf1.FilterHSInit(1500,0.7,4);
+  this.comp = 0.929;
+);
+
+function KFilter_Slow(input)
+(
+  this.in = this.kf0.Filter(input);
+  this.in = this.kf1.Filter(this.in);
+  this.in *= this.comp;
+);
+
+function RMSInit(weight_ms)
+instance (weight)(
+  weight = (1-exp(-1/(weight_ms / 1000 * srate))) * 4;
+);
+
+function EbuRMS(input)
+instance (s,rms,weight)(
+  eco.quarterEnabled ? (
+    rms = (s += weight * ( input^2 - s ));
+  );
+  rms;
+);
+
+function RMSInit_Slow(weight_ms)
+instance (weight)(
+  weight = (1-exp(-1/(weight_ms / 1000 * srate)));
+);
+
+function EbuRMS_Slow(input)
+instance (s,rms,weight)(
+  rms = (s += weight * ( input^2 - s ));
+);
+
+function FollowerInit(att,rel,smooth) (
+  this.a = 1-exp(-1/(srate*att/1000));
+  this.r = 1-exp(-1/(srate*rel/1000));
+  this.s = exp(-1/(srate*smooth/1000));
+);
+
+function Follower(in) (
+    //this.tmp = in >= this.tmp ? in : in + this.s * (this.tmp-in);
+    this.tmp = max(in + this.s * (this.tmp-in),in);
+    this.weight = ((this.e < this.tmp) ? this.a : this.r);
+    this.e += (this.tmp - this.e) * this.weight;
+);
+
+function MeasureInit(timeCoeff)
+instance(k0,k1,r0,r1)
+(
+  k0.KFilterInit();
+  k1.KFilterInit();
+  r0.RMSInit(timeCoeff);
+  r1.RMSInit(timeCoeff);
+);
+
+function Measure(in1,in2)
+instance(out1,out2,mul,k0,k1,r0,r1,inMax1,inMax2)
+(
+   out1 = k0.KFilter(in1);
+   out1 = r0.EbuRMS(out1);
+   out2 = k1.KFilter(in2);
+   out2 = r1.EbuRMS(out2);  
+);
+
+function GatedMeasure(in1,in2)
+instance(out1,out2,mul,k0,k1,r0,r1,inMax1,inMax2)
+(
+  gateState > var.gTol ? (
+    out1 = k0.KFilter(in1);
+    out1 = r0.EbuRMS(out1);
+    out2 = k1.KFilter(in2);
+    out2 = r1.EbuRMS(out2);
+  );
+);
+
+function MeasureInitRMS(value)
+instance(r0,r1)
+(
+  r0.s = r1.s = value;
+);
+
+function LevelerBlockInit(timeCoeff,delayStart,delayEnd)
+instance(k0,k1,r0,r1,d0,d1,dprm,target,e,m)
+(
+  k0.KFilterInit();
+  k1.KFilterInit();
+  r0.RMSInit(timeCoeff);
+  r1.RMSInit(timeCoeff);
+  m.MeasureInit(timeCoeff);
+  
+  dprm.len = delayEnd-delayStart-2;
+  dprm.As = delayStart;
+  dprm.Ae = delayStart+(dprm.len/2);
+  dprm.Bs = dprm.Ae+1;
+  dprm.Be = delayEnd-1;  
+  
+  d0.DelayInit(dprm.As,dprm.Ae);
+  d1.DelayInit(dprm.Bs,dprm.Be);
+  
+  e.FollowerInit(1,10,10);
+);
+
+function LevelerInitRMS(value)
+instance(r0,r1,m)
+(
+  //r0.s = r1.s = value;
+  m.MeasureInitRMS(value)
+);
+
+function LevelerBlockUpdateParams(maxGain_lu,maxAtt_lu)
+instance(maxGain,minGain,target,amount)
+(
+  maxGain = 10^(abs(maxGain_lu)/20);
+  minGain = 10^(-abs(maxAtt_lu)/20);
+  target = prm.target;
+);
+
+function LevelerBlock(in1,in2)
+instance(sgn1,sgn2,mul,k0,k1,r0,r1,maxGain,minGain,d0,d1,target,e,sum,m,amount)
+(      
+  gateState > var.gTol ? (
+    m.Measure(in1,in2);
+    sum = e.Follower(m.out1+m.out2);
+    mul = max(min(sqrt(target/sum),maxGain),minGain);
+  );
+  
+  spl0 = d0.Delay(spl0) * mul;
+  spl1 = d1.Delay(spl1) * mul;
+);
+
+function ZeroFollower(input) (
+  this.e = max(input,this.e*gateWeight);
+);
+
+function InitMemory()
+(
+  var.micMs = 50;
+  var.MedMs = 400;
+  var.MacMs = 3000;
+    
+  var.memOffset = 1000;
+  var.lvl0MemLen = floor(srate * 0.025)*2;
+  var.lvl1MemLen = floor(srate * 0.030)*2;
+  var.lvl2MemLen = floor(srate * 0.050)*2;
+  
+  var.lvl0MemLen = var.lvl0MemLen % 2 ? var.lvl0MemLen-1 : var.lvl0MemLen;
+  var.lvl1MemLen = var.lvl1MemLen % 2 ? var.lvl1MemLen-1 : var.lvl1MemLen;
+  var.lvl2MemLen = var.lvl2MemLen % 2 ? var.lvl2MemLen-1 : var.lvl2MemLen;
+  var.lvl0MemStart = var.memOffset;
+  var.lvl0MemEnd = var.lvl0MemStart+var.lvl0MemLen;
+  var.lvl1MemStart = var.lvl0MemEnd;
+  var.lvl1MemEnd = var.lvl1MemStart+var.lvl1MemLen;
+  var.lvl2MemStart = var.lvl1MemEnd;
+  var.lvl2MemEnd = var.lvl2MemStart+var.lvl2MemLen;
+  
+  var.pdc = (var.lvl0MemLen+var.lvl1MemLen+var.lvl2MemLen)/2-3;
+    
+  gateWeight = exp(-1/(100 / 1000 * srate));
+);
+
+function ProcessSliders() (
+  prm.trim = 10 ^ (slider1/20);
+  prm.target = 10 ^ (slider2/10);
+  prm.nFloor = 10 ^ ((slider1+slider3)/20);
+  prm.gateSpeed = slider4;
+  gateSmoothWeight = exp(-1/(prm.gateSpeed / 1000 * srate));
+  prm.autoTrim = slider5;
+  prm.output = 10 ^ (slider20/20);
+  prm.targetDB = slider2;
+  prm.hpf = slider6^0.2;
+  prm.autoThresh = slider7;
+  prm.autoThreshCoef = gateSmoothWeight^srate;
+  
+  prm.dynFastMin = slider10;
+  prm.dynFastMax = slider11;
+  prm.dynMedMin = slider12;
+  prm.dynMedMax = slider13;
+  prm.dynSlowMin = slider14;
+  prm.dynSlowMax = slider15;
+    
+  l0.LevelerBlockUpdateParams(prm.dynFastMax,prm.dynFastMin);
+  l1.LevelerBlockUpdateParams(prm.dynMedMax,prm.dynMedMin);
+  l2.LevelerBlockUpdateParams(prm.dynSlowMax,prm.dynSlowMin);
+    
+  hpf1.FilterHPInit(20,Interpolate(1,0.08,prm.hpf));
+  hpf2.FilterHPInit(20,Interpolate(1,0.08,prm.hpf));
+);
+
+function UpdateTrim() (
+  s1.value = slider1;
+  sliderchange(slider1);
+  prm.trim = 10 ^ (slider1/20);
+  prm.nFloor = 10 ^ ((slider1+slider3)/20);
+);
+
+function UpdateThreshold() (
+  s3.value = slider3;
+  sliderchange(slider1);
+  prm.nFloor = 10 ^ ((slider1+slider3)/20);
+);
+
+function RequestASpeed()
+instance (current)
+(
+  !current ? (
+    current = (1/var.pdc) * (1-gating);
+  );
+  current;
+);
+
+/************************/
+
+InitMemory();
+
+pdc_delay = var.pdc;
+pdc_bot_ch = 0; pdc_top_ch = 2;
+
+l0.LevelerBlockInit(var.micMs, var.lvl0MemStart, var.lvl0MemEnd);
+l1.LevelerBlockInit(var.MedMs, var.lvl1MemStart, var.lvl1MemEnd);
+l2.LevelerBlockInit(var.MacMs, var.lvl2MemStart, var.lvl2MemEnd);
+m0.MeasureInit(1000);
+m1.MeasureInit(3000);
+
+var.gTol = 0.891;
+_playBackInit = 0;
+
+@slider
+
+s1.value = slider1;
+s2.value = slider2;
+s3.value = slider3;
+s4.value = slider4;
+s5.value = slider5;
+s6.value = slider6;
+s7.value = slider7;
+s10.value = slider10;
+s11.value = slider11;
+s12.value = slider12;
+s13.value = slider13;
+s14.value = slider14;
+s15.value = slider15;
+
+s20.value = slider20;
+
+ProcessSliders();
+
+@block
+
+!_playBackInit ? (
+  l0.LevelerInitRMS(prm.target*0.5);
+  l1.LevelerInitRMS(prm.target*0.5);
+  l2.LevelerInitRMS(prm.target*0.5);
+  m0.MeasureInitRMS(prm.target*0.5);
+  
+  l0.mul = l1.mul = l2.mul = 1;
+  tiers = floor(srate/samplesblock) * 2;
+  halfTier = floor(tiers/2);
+  trimSmootherWeight = 1/(floor(srate/samplesblock) * 2.9);
+  gatingComp.s = 1;
+  gatingRatioConv = 1;
+  gatingRatio = 0;
+  _playBackInit = 1;
+  gating = 1;
+  splCount = 0;
+  gatedSpl = 0;
+  trimTier = 0;
+  trimState = 0;
+);
+
+trimReference = (prm.dynMedMin && prm.dynMedMax) ? l1.mul : (l1.mul+l2.mul) * 0.5;
+
+prm.autoTrim ? (
+  gating == 1 ? (
+    trimTier += 1;
+    trimSample = trimReference;
+    trimSample > 1 ? (
+      trimState += 1;
+    );
+    trimSample < 1 ? (
+      trimState -= 1;
+    );
+  );
+  
+  trimTier >= tiers ? (
+    trimState > halfTier ? (
+    trimStep = ceil(((trimState - halfTier) / tiers * 2) * 100) * 0.01;
+      slider1 += trimStep;
+      UpdateTrim();
+    );
+    trimState < -halfTier ? (
+    trimStep = ceil(((trimState + halfTier) / tiers * 2) * 100) * 0.01;
+      slider1 += trimStep;
+      UpdateTrim();
+    );  
+    trimTier = trimState = 0;
+  );
+);
+
+gating < var.gTol ? (
+  gatedSpl += 1;
+);
+
+splCount > tiers * 2 ? (
+  gatingRatio = (gatingRatio + min(max(gatedSpl^1.075 / splCount,0),1))*0.5;
+  gatingRatioConv = min( (gatingRatio+1)^0.45, 1.2589);
+  splCount = 0;
+  gatedSpl = 0;
+  
+  /* Auto Gate */
+  prm.autoThresh && gating > prm.autoThreshCoef ? (
+    gatingRatio > 0.5 ? (
+      slider3 -= floor((10^(slider3/20))*19+1);
+      UpdateThreshold();
+    );
+    gatingRatio < 0.1 ? (
+      slider3 += ceil(1/(10^(slider3/20))^0.25);
+      UpdateThreshold();
+    );
+  );
+  
+) : (
+  splCount += 1;
+);
+
+gatingComp = (gatingComp.s += trimSmootherWeight * (gatingRatioConv - gatingComp.s));
+l2.target = prm.target * gatingComp;
+//A = 10 * log10(prm.target * gatingComp);
+
+gateState > var.gTol ? (
+  mtrOutput = m1.out1+m1.out2;
+);
+
+norm = (rand(1) * 0.000000000000001);
+
+@sample
+
+eco.quarterEnabled = !eco.splCount ? 1 : 0;
+eco.halfEnabled = !eco.splCount || eco.splCount == 2 ? 1 : 0;
+eco.splCount > 2 ? eco.splCount = 0 : eco.splCount += 1;
+
+spl0 += norm;
+spl1 += norm;
+
+prm.hpf ? (
+  spl0 = hpf1.Filter(spl0);
+  spl1 = hpf2.Filter(spl1);
+);
+
+spl0 *= prm.trim;
+spl1 *= prm.trim;
+
+inMax = max(abs(spl0),abs(spl1));
+
+max(e0.ZeroFollower(inMax),prm.nFloor)/prm.nFloor-1 ? (
+  gateState = 1;
+  gating = min(gating+ap.RequestASpeed(),1);
+) : (
+  ap.current = 0;
+  gating = gateState = gating * gateSmoothWeight;
+);
+
+outMul = gating^0.5 * prm.output;
+
+m0.GatedMeasure(spl0,spl1);
+l0.target = preRMSSum = m0.out1 + m0.out2;
+
+l0.LevelerBlock(spl0,spl1);
+l1.LevelerBlock(spl0,spl1);
+l2.LevelerBlock(spl0,spl1);
+
+spl0 *= outMul;
+spl1 *= outMul;
+
+m1.Measure(spl0,spl1);
+
+@gfx 450 620
+
+function CheckBoxInit(x,y,id,title)
+(
+  this.x = x; this.y = y; this.title = title; this.id = id;
+  gfx_getimgdim(id, this.box.w, this.box.h);
+);
+
+function CheckBox()
+(
+  // Mouse Logic
+  mouse_x >= this.x && mouse_x <= this.x+this.box.w && mouse_y >= this.y && mouse_y <= this.y+this.box.h && !_sliderDisabled ? (
+    !mouse_cap ? this.hasEntered = 1;
+    mouse_cap ? this.hasClicked = 1;
+    this.hasEntered && this.hasClicked ? this.canChange = 1;
+  ) : (
+    this.hasEntered = this.hasClicked = this.canChange = 0;
+  );
+  !mouse_cap ? (this.canChange = 0;);
+
+  this.canChange ? (
+    this.value = 1-this.value;
+    this.hasEntered = this.hasClicked = this.canChange = 0;
+    _sliderDirty = 1;
+  );
+
+  // Frame
+  /*
+  gfx_r = gfx_g = gfx_b = 0.6;
+  gfx_rect(this.x,this.y,this.box.w,this.box.h);
+  gfx_r = gfx_g = gfx_b = 0.15;
+  gfx_rect(this.x+1,this.y+1,this.box.w-2,this.box.h-2);
+  */
+  
+  // Checked
+  this.value ? (
+    gfx_x = this.x; gfx_y = this.y;
+    gfx_blit(this.id,1,0);
+  );
+    
+  this.value; 
+);
+
+function HsliderInit(x,y,w,h,f,t,s,d,id,unit,title)
+(
+  this.x = x; this.y = y; this.w = w; this.h = h;
+  this.f = f; this.t = t; this.s = s; this.d = d;
+  this.id = id;
+  this.unit = unit;
+  this.title = title;
+
+  gfx_getimgdim(id, this.knob.w, this.knob.h);
+  this.knob.hw = this.knob.w * 0.5;
+  this.range = abs(this.f - this.t);
+  this.dec = "%.2f";
+  this.roPosX = this.x + this.w;
+  this.roPosY = floor(this.y + (this.h*0.5));
+  this.knobY = ceil(this.y - (this.knob.h*0.5) + (this.h*0.5));
+  this.s.orig = this.s;
+  _sliderInitialized = 1;
+);
+
+function Hslider()
+(
+  // Frame
+  /*
+  gfx_r = gfx_g = gfx_b = 0.5;
+  gfx_rect(this.x,this.y,this.w,this.h,0);
+  */
+
+  // Mouse Logic
+  mouse_x >= this.x && mouse_x <= this.x+this.w && mouse_y >= this.y && mouse_y <= this.y+this.h && !this.disabled ? (
+    !mouse_cap ? this.hasEntered = 1;
+    mouse_cap ? this.hasClicked = 1;
+    this.hasEntered && this.hasClicked ? this.canChange = 1;
+  ) : (
+    this.hasEntered = this.hasClicked = 0;
+  );
+  !mouse_cap ? (this.canChange = 0; this.init_x = 0;);
+  
+  // Process
+  this.canChange ? (
+    mouse_cap & 8 ? (
+      !this.init_x ? this.init_x = mouse_x;
+      this.knob.input = (this.init_x - this.x - this.knob.w) + (((mouse_x/this.init_x) - 1) * 10 + this.knob.hw);
+      this.s = 0.1;
+    ) : (
+      this.knob.input = (mouse_x - this.x - this.knob.hw);
+      this.init_x = 0;
+      this.s = this.s.orig;
+    );
+    
+    this.knob.input.normalized = this.knob.input / (this.w-this.knob.w-2);
+    this.value.rect = this.range*this.knob.input.normalized;
+    this.step = 1/this.s;
+    this.value.rect = ceil(this.value.rect * this.step) / this.step;
+    this.value = this.value.rect + this.f;
+    
+    mouse_cap & 4 ? this.value = this.d;
+    _sliderDirty = 1;
+  );
+  
+  this.value = max(min(this.value,this.t),this.f);
+  this.knob.pos = (this.range + this.value - this.t) / (this.range) * (this.w-this.knob.w-2);
+
+  // Knob
+  gfx_x = this.x + 1 + this.knob.pos; gfx_y = this.knobY;
+  gfx_blit(this.id,1,0);
+
+  // Readout
+  !this.noReadout ? (
+    gfx_r = gfx_g = gfx_b = 0.8;
+    this.valStr = strcat(sprintf(#,this.dec,this.value),this.unit);
+    gfx_measurestr(this.valStr,this.valStr.w,this.valStr.h);
+    gfx_x = this.roPosX; gfx_y = floor(this.roPosY - (this.valStr.h*0.5));
+    gfx_drawstr(this.valStr);
+  );
+    
+  this.value;
+);
+
+function dynmeter(in1,x_pos,y_pos,showval)
+instance(redux,col1,col2,in1_gfx,in2_gfx,in3_gfx)
+(
+  /*
+  gfx_r = 1; gfx_g = 1; gfx_b = 1; gfx_a = 0.5;
+  gfx_x = x_pos; gfx_y = y_pos;
+  gfx_rectto(350+x_pos,10+y_pos);
+  gfx_r = 0; gfx_g = 0; gfx_b = 0; gfx_a = 1;
+  gfx_x = x_pos+1; gfx_y = y_pos+1;
+  gfx_rectto(349+x_pos,9+y_pos);
+  gfx_r = 0.8; gfx_g = 0.8; gfx_b = 0.8; gfx_a = 1;
+  showval ? (
+    gfx_x = 349+x_pos; gfx_y = 10+y_pos;gfx_lineto(349+x_pos,20+y_pos,0);gfx_drawnumber(20,0);
+    gfx_x = 261+x_pos; gfx_y = 10+y_pos;gfx_lineto(261+x_pos,20+y_pos,0);gfx_drawnumber(10,0);
+    gfx_x = 217+x_pos; gfx_y = 10+y_pos;gfx_lineto(217+x_pos,20+y_pos,0);gfx_drawnumber(5,0);
+    gfx_x = 175+x_pos; gfx_y = 10+y_pos;gfx_lineto(175+x_pos,20+y_pos,0);gfx_drawnumber(0,0);
+    gfx_x = 131+x_pos; gfx_y = 10+y_pos;gfx_lineto(131+x_pos,20+y_pos,0);gfx_drawnumber(-5,0);
+    gfx_x = 87+x_pos; gfx_y = 10+y_pos;gfx_lineto(87+x_pos,20+y_pos,0);gfx_drawnumber(-10,0);
+    gfx_x = 0+x_pos; gfx_y = 10+y_pos;gfx_lineto(0+x_pos,20+y_pos,0);gfx_drawnumber(-20,0);
+  );
+  */
+  
+  gfx_x = 176+x_pos; gfx_y = y_pos+2;
+  in1 = max(in1,0.1);
+  in1 = min(in1,10);
+  gfx_a = 1;
+  col1 = in1 >= 1 ? min(in1/4,1) : min((1/in1)/4,1);
+  col2 = 1-col1;
+  gfx_r = col1; gfx_g = col2; gfx_b = 0;  gfx_a = 1;
+  in1_gfx = (20 * log10(in1) / 20 * 175) + 175;
+  gfx_rectto( in1_gfx + x_pos, 8 + y_pos);
+    
+  gfx_r = 0.5; gfx_g = 0.5; gfx_b = 0.5; gfx_a = 1;
+  gfx_x = 175+x_pos; gfx_y = y_pos;
+  gfx_rectto(176+x_pos,10+y_pos);
+);
+
+gfx_r = gfx_b = gfx_g = 1;
+gfx_setfont(1,"Arial",16);
+gfx_x = gfx_y = 0;
+gfx_blit(1,1,0);
+
+sldY = 90;
+
+!_sliderInit ? (
+  s1.HsliderInit(90,sldY,250,20,-20,20,0.25,0,0," dB","Input Trim");
+  s2.HsliderInit(90,sldY+50,250,20,-46,0,0.5,-23,0," LUFS","Target");
+  s3.HsliderInit(90,sldY+100,250,20,-80,0,1,-40,0," dBfs","Noise Floor");
+  s4.HsliderInit(90,sldY+150,250,20,20,2000,10,500,0," ms","Gate Speed");
+  s20.HsliderInit(90,sldY+200,250,20,-6,6,0.25,0,0," dB","Output Trim");
+  s5.CheckBoxInit(46,sldY+240,0,"Automatic Trim");
+  s7.CheckBoxInit(184,sldY+240,0,"Automatic Threshold");
+  
+  s21.CheckBoxInit(312,sldY+240,0,"Config");
+  s10.HsliderInit(111,sldY-28,250,20,0,20,1,10,0," dB","Fast Attenuation");
+  s11.HsliderInit(111,sldY+12,250,20,0,20,1,0,0," dB","Fast Gain");
+  s12.HsliderInit(111,sldY+52,250,20,0,20,1,10,0," dB","Med Attenuation");
+  s13.HsliderInit(111,sldY+92,250,20,0,20,1,10,0," dB","Med Gain");
+  s14.HsliderInit(111,sldY+132,250,20,0,20,1,20,0," dB","Slow Attenuation");
+  s15.HsliderInit(111,sldY+172,250,20,0,20,1,20,0," dB","Slow Gain");
+  s6.HsliderInit(111,sldY+212,250,20,0,1,0.1,0,0,"","HPF Amount");
+  
+  _sliderInit = 1;
+);
+
+!prm.showConfig ? (
+  slider1 = s1.Hslider();
+  slider2 = s2.Hslider();
+  slider3 = s3.Hslider();
+  slider4 = s4.Hslider();
+  slider20 = s20.Hslider();
+) : (
+  /* Config screen */
+  gfx_x = 5; gfx_y = 57;
+  gfx_blit(2,1,0);
+  slider10 = s10.Hslider();
+  slider11 = s11.Hslider();
+  slider12 = s12.Hslider();
+  slider13 = s13.Hslider();
+  slider14 = s14.Hslider();
+  slider15 = s15.Hslider();
+  slider6 = s6.Hslider();
+);
+
+slider5 = s5.CheckBox();
+prm.showConfig = s21.CheckBox();
+slider7 = s7.CheckBox();
+
+_sliderDirty ? (
+  ProcessSliders();
+  _sliderDirty = 0;
+);
+
+mtrY = 400;
+
+mtr1val = l0.mul ? l0.mul : 1;
+mtr2val = l1.mul ? l1.mul : 1;
+mtr3val = l2.mul ? l2.mul : 1;
+
+dynmeter(mtr1val,50,mtrY,0);
+dynmeter(mtr2val,50,mtrY+20,0);
+dynmeter(mtr3val,50,mtrY+40,0);
+
+/* Readout */
+
+lufsOut = 10 * log10(mtrOutput);
+luOut = lufsOut - prm.targetDB;
+
+lufsOut < 0 && lufsOut > -49 ? (
+  lufsStr = sprintf(#,"%.1f",lufsOut);
+  lufsStr = strcat(lufsStr," LUFS");
+  luStr = sprintf(#,"%.1f",luOut);
+  luStr = strcat(luStr," LU");
+) : (
+  lufsStr = "INVALID";
+  luStr = "INVALID";
+);
+
+gfx_r = 0.5; gfx_b = 0; gfx_g = 1;
+luOut > 1 ? (
+  gfx_r = 1; gfx_b = 0; gfx_g = 0.5;
+);
+luOut < -1 ? (
+  gfx_r = 0; gfx_b = 0.85; gfx_g = 0.85;
+);
+
+gfx_a = 0.8;
+gfx_setfont(1,"Arial",20,'b');
+gfx_measurestr(lufsStr,lufsStr.w,lufsStr.h);
+gfx_measurestr(luStr,luStr.w,luStr.h);
+gfx_x = 165 - (lufsStr.w*0.5); gfx_y = mtrY+114;
+gfx_drawstr(lufsStr);
+gfx_x = 286 - (luStr.w*0.5); gfx_y = mtrY+114;
+gfx_drawstr(luStr);
+
+/* Gating meter */
+gfx_x = 276; gfx_y = mtrY+177;
+gfx_r = 0; gfx_b = 1; gfx_g = 1; gfx_a = 0.8;
+gfx_rectto(ceil(gfx_x-((1-gating)*101)),gfx_y+9);
+
+/* Excessive gating */
+gating > prm.autoThreshCoef && gatingRatio > 0.8 ? (
+  gfx_r = 1; gfx_b = 1; gfx_g = 1;
+  gfx_setfont(1,"Arial",13,'b');
+  egStr = "EXCESSIVE GATING!";
+  gfx_measurestr(egStr,egStr.w,egStr.h);
+  col = ((flash += 1) % 20) * 0.05;
+  gfx_a = col;
+  gfx_x = 225-egStr.w*0.5; gfx_y = 580+egStr.h;
+  gfx_drawstr(egStr);
+);
+
+gfx_r = 1; gfx_g = 1; gfx_b = 1; gfx_a = 0.75;
+gfx_x = 380; gfx_y = 595;
+gfx_a = 0.5;
+gfx_setfont(1,"Arial",11);
+gfx_drawstr(buildStr);

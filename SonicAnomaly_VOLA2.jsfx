@@ -1,0 +1,561 @@
+desc:VOLA2
+version: 1.0
+author: SonicAnomaly
+changelog: init
+provides: vola2_gfx/*
+
+/*****************************************************
+Copyright (C) 2016 Stige T.
+License: http://jsplugins.supermaailma.net/license.php
+*****************************************************/
+
+EffectName: VOLA2
+VendorString: Sonic Anomaly
+VendorVersion: 1000
+UniqueId: 'VOLA'
+
+slider2:0<0,1,1{Off,On}>-SC Filter
+slider3:0<0,8,1{Off,20Hz,40Hz,80Hz,100Hz,150Hz,200Hz,350Hz,500Hz}>-LF Filter
+slider4:0<0,11,1{Zero,250us,500us,1ms,5ms,10ms,20ms,50ms,100ms,200ms,500ms,1sec}>-Attack Mode
+slider5:0<-30,0,1>-Push Down [dB]
+slider6:0<0,30,1>-Pull Up [dB]
+slider7:-5<-10,0,1>-Recovery
+slider8:0<0,10,1>-Emphasis
+slider9:0<-20,20,1>-Output [dB]
+
+slider10:10<1,10,0.1>-[Display Speed]
+
+filename:0,vola2_gfx/bg.png
+filename:1,vola2_gfx/sliderknob.png
+resource:0,1
+
+@init
+
+!"#define VAL(A) (A)" "//";
+
+buildStr = "Build 170206";
+
+p_tmp = p_tmp2 = 0;
+t20 = exp(-1/(srate*0.02));
+t200 = exp(-1/(srate*0.2));
+rmm = (44100/srate) * 0.0003;
+
+function delay_init(samples,index)
+instance (len,sloop,splay)
+(
+  len = samples > srate ? srate : samples;
+  sloop = splay = srate * index;
+);
+
+function delay(input)
+instance(sindex,splay,sloop,len)
+(
+  sloop[sindex] = input;
+  sindex += 1;
+  sindex > len ? sindex = 0;
+  splay[sindex];
+);
+
+function follower(input,att,rel)
+instance (env,tmp) (
+  tmp = input;
+  (tmp > env) ? (
+      env = att * (env - tmp) + tmp;
+  ) : (
+      env = rel * (env - tmp) + tmp;
+  );
+);
+
+function filterHP(input)
+instance(output,c,a1,a2,a3,b1,b2,mX1,mX2,mY1,mY2)
+(
+  output = a1 * input + a2 * mX1 + a3 * mX2 - b1 * mY1 - b2 * mY2;
+  mX2 = mX1;
+  mX1 = input;
+  mY2 = mY1;
+  mY1 = output;
+);
+
+function filterHP_init(f, r)
+instance(c,a1,a2,a3,b1,b2)
+(
+  c = tan($pi * f / srate);
+  a1 = 1.0 / ( 1.0 + r * c + c * c);
+  a2 = -2*a1;
+  a3 = a1;
+  b1 = 2.0 * ( c*c - 1.0) * a1;
+  b2 = ( 1.0 - r * c + c * c) * a1;
+);
+
+maxbcount = 32;
+function blocksniffer(inL,inR) (
+  (this.mspl < maxbcount) ? (
+    inL == inR ? (this.mspl += 1;) : (this.mspl = 0; sniffer.isMono = 0;);
+  ) : (
+   sniffer.isMono = 1;
+   this.mspl = 0;
+  );
+);
+
+function resetDisplay() (
+  i = 0;
+  s = 10000;
+  memset(gfxmem_start,100,buffsize);
+);
+
+function process_slider() (
+  p_tmp = p_tmp2 = 0;
+  
+  mlim = 10^(slider5/20);
+  mgain = 10^((-slider6+slider5)/20);
+  
+  slider7 == -10 ? recovery = 100;
+  slider7 == -9 ? recovery = 10;
+  slider7 == -8 ? recovery = 5;
+  slider7 == -7 ? recovery = 1;
+  slider7 == -6 ? recovery = 0.5;
+  slider7 == -5 ? recovery = 0.25;
+  slider7 == -4 ? recovery = 0.15;
+  slider7 == -3 ? recovery = 0.1;
+  slider7 == -2 ? recovery = 0.08;
+  slider7 == -1 ? recovery = 0.06;
+  slider7 == 0 ? recovery = 0.03;
+  rel = exp(-1/(srate*recovery));
+  rmt = recovery == 100 ? 0.00003 : 0;
+  
+  output = 10^(slider9/20);
+  
+  ss = slider3;
+  ss == 1 ? (ssf = 20; ssr = 1.42;);
+  ss == 2 ? (ssf = 40; ssr = 1.42;);
+  ss == 3 ? (ssf = 60; ssr = 1.75;);
+  ss == 4 ? (ssf = 60; ssr = 2;);
+  ss == 5 ? (ssf = 60; ssr = 3;);
+  ss == 6 ? (ssf = 60; ssr = 4;);
+  ss == 7 ? (ssf = 60; ssr = 6;);
+  ss == 8 ? (ssf = 60; ssr = 8;);
+  
+  flt0.filterHP_init(ssf, ssr);
+  flt1.filterHP_init(ssf, ssr);
+  
+  slider4 == 0 ? inertia = 0;
+  slider4 == 1 ? inertia = 0.00025;    
+  slider4 == 2 ? inertia = 0.0005;  
+  slider4 == 3 ? inertia = 0.001;
+  slider4 == 4 ? inertia = 0.005;
+  slider4 == 5 ? inertia = 0.01;
+  slider4 == 6 ? inertia = 0.02;
+  slider4 == 7 ? inertia = 0.05;
+  slider4 == 8 ? inertia = 0.1;
+  slider4 == 9 ? inertia = 0.2;
+  slider4 == 10 ? inertia = 0.5;
+  slider4 == 11 ? inertia = 1;
+  att = exp(-1/(srate*inertia));
+  
+  emul = (slider8 * 0.1)^0.65 * 3.16 ;
+  emphasis = min((inertia * 2000) + emul, 10);
+  
+  mtrspeed = slider10;
+  buffsize = srate * mtrspeed;
+  step = buffsize/samplesblock/loopsize;
+  
+  scf = slider2;
+  
+  scfilt = ss && scf ? 1 : 0;
+  prefilt = ss && !scf ? 1 : 0;
+  
+);
+
+scf.filterHP_init(2000, 5);
+d0.delay_init(64,0);
+d1.delay_init(64,1);
+
+pdc_delay = 64;
+pdc_bot_ch = 0; pdc_top_ch = 2;
+
+// GFX Init
+mtr_x = 17;
+mtr_y = 290;
+y_mem = y_mem2 = 360;
+rmss = 10000;
+x_pos = mtr_x + 90;
+y_pos = mtr_y + 190;
+gr_pos_x = mtr_x + 10;
+gr_pos_y = mtr_y + 10;
+gfxmem_start = srate * 2 + 1;
+loopsize = 360;
+
+strMem = 600000;
+strMem[0] = "Off";
+strMem[1] = "20 Hz";
+strMem[2] = "40 Hz";
+strMem[3] = "80 Hz";
+strMem[4] = "100 Hz";
+strMem[5] = "150 Hz";
+strMem[6] = "200 Hz";
+strMem[7] = "350 Hz";
+strMem[8] = "500 Hz";
+strMem = 600010;
+strMem[0] = "Zero";
+strMem[1] = "250us";
+strMem[2] = "500 us";
+strMem[3] = "1 ms";
+strMem[4] = "5 ms";
+strMem[5] = "10 ms";
+strMem[6] = "20 ms";
+strMem[7] = "50 ms";
+strMem[8] = "100 ms";
+strMem[9] = "200 ms";
+strMem[10] = "500 ms";
+strMem[11] = "1 s";
+// GFX Init End
+
+_sliderDirty = 1;
+
+@slider
+
+s2.checked = slider2;
+s3.value = slider3;
+s4.value = slider4;
+s5.value = slider5;
+s6.value = slider6;
+s7.value = slider7;
+s8.value = slider8;
+s9.value = slider9;
+s10.value = slider10;
+
+process_slider();
+
+@block
+
+!init ? (
+  resetDisplay();
+  init = 1;
+);
+
+blocksniffer(snL,snR);
+
+norm = (rand(1) * 0.000000000000001);
+
+play_state && genv ? (
+  gfxmem = gfxmem_start;
+  gfxmem[i] = 200 - ceil(100 - log(1/(max(min(genv * output,10),0.1))) * 43.3 );
+  i >= buffsize / samplesblock ? i = 0 : i += 1;
+);
+
+@sample
+
+  inL = snL = spl0 + norm;
+  inR = snR = spl1 + norm;  
+
+prefilt ? (
+  inL = flt0.filterHP(inL);
+  !sniffer.isMono ? (
+    inR = flt1.filterHP(inR);
+  ) : (
+    inR = inL;
+  );
+);
+
+key = abs(inR) > abs(inL) ? inR :inL;
+key = (emphasis ? scf.filterHP(key) * emphasis) + key;
+scfilt ? (
+  key = flt0.filterHP(key);
+);
+
+rmod = e3.follower(abs(key),0,t200 - rmt);
+rmod = rel / (rmm * rmod+1);
+
+env = e0.follower(abs(key),att,rmod);
+env = e1.follower(env,0,t20);
+env = e2.follower(env,0,t20);
+
+env = mlim / (env + mgain);
+
+outL = env * d0.delay(inL);
+outR = env * d1.delay(inR);
+
+genv = env;
+
+spl0 = outL * output;
+spl1 = outR * output;
+
+@gfx 430 600
+
+function draw_hslider(x,y,w,h,f,t,s,d,unit,title)
+(
+    
+  // Knob parameters
+  this.knob.w = 26;
+  this.knob.hw = this.knob.w * 0.5;
+  this.range = abs(f - t);
+
+  // Mouse Logic
+  mouse_x >= x && mouse_x <= x+w && mouse_y >= y && mouse_y <= y+h && !this.disabled ? (
+    !mouse_cap ? this.hasEntered = 1;
+    mouse_cap ? this.hasClicked = 1;
+    this.hasEntered && this.hasClicked ? this.canChange = 1;
+  ) : (
+    this.hasEntered = this.hasClicked = 0;
+  );
+  !mouse_cap ? (this.canChange = 0; this.init_x = 0;);
+  
+  // Process
+  this.canChange ? (
+    mouse_cap & 8 ? (
+      !this.init_x ? this.init_x = mouse_x;
+      this.knob.input = (this.init_x - x - this.knob.w) + (((mouse_x/this.init_x) - 1) * 100 + this.knob.hw);
+    ) : (
+      this.knob.input = (mouse_x - x - this.knob.hw);
+      this.init_x = 0;
+    );
+    
+    this.knob.input.normalized = this.knob.input / (w-this.knob.w-2);
+    this.value.rect = this.range*this.knob.input.normalized;
+    this.step = 1/s;
+    this.value.rect = ceil(this.value.rect * this.step) / this.step;
+    this.value = this.value.rect + f;
+    
+    mouse_cap & 4 ? this.value = d;
+    _sliderDirty = 1;
+  );
+  
+  this.value = max(min(this.value,t),f);
+  this.knob.pos = (this.range + this.value - t) / (this.range) * (w-this.knob.w-2);
+
+  // Knob
+  gfx_x = x+1+this.knob.pos; gfx_y = y+1;
+  gfx_blit(1,1,0);
+
+  // Title
+  gfx_r = gfx_g = gfx_b = 0.6;
+  this.str1 = title;
+  gfx_measurestr(this.str1,this.str1.w,this.str1.h);
+  gfx_x = x - this.str1.w - 5 ; gfx_y = y + (h * 0.5) - (this.str1.h * 0.5);
+  gfx_drawstr(this.str1);
+
+  // Readout
+  !this.hidereadout ? (
+    gfx_r = gfx_g = gfx_b = 0.7;
+    this.str2 = strcat(sprintf(#,"%.1f",this.value),unit);
+    gfx_measurestr(this.str2,this.str2.w,this.str2.h);
+    gfx_x = x + w + 5; gfx_y = y + (h * 0.5) - (this.str2.h * 0.5);
+    gfx_drawstr(this.str2);
+  );
+    
+  this.value;
+);
+
+function draw_hselector(x,y,w,h,f,t,s,d,title)
+(
+    
+  // Knob parameters
+  this.knob.w = 26;
+  this.knob.hw = this.knob.w * 0.5;
+  this.range = abs(f - t);
+    
+  // Mouse Logic
+  mouse_x >= x && mouse_x <= x+w && mouse_y >= y && mouse_y <= y+h && !this.disabled ? (
+    !mouse_cap ? this.hasEntered = 1;
+    mouse_cap ? this.hasClicked = 1;
+    this.hasEntered && this.hasClicked ? this.canChange = 1;
+  ) : (
+    this.hasEntered = this.hasClicked = 0;
+  );
+  !mouse_cap ? (this.canChange = 0; this.init_x = 0;);
+  
+  // Process
+  this.canChange ? (
+    mouse_cap & 8 ? (
+      !this.init_x ? this.init_x = mouse_x;
+      this.knob.input = (this.init_x - x - this.knob.w) + (((mouse_x/this.init_x) - 1) * 100 + this.knob.hw);
+    ) : (
+      this.knob.input = (mouse_x - x - this.knob.hw);
+      this.init_x = 0;
+    );
+    
+    this.knob.input.normalized = this.knob.input / (w-this.knob.w-2);
+    this.value.rect = this.range*this.knob.input.normalized;
+    this.step = 1/s;
+    this.value.rect = ceil(this.value.rect * this.step) / this.step;
+    this.value = this.value.rect + f;
+    
+    mouse_cap & 4 ? this.value = d;
+    _sliderDirty = 1;
+  );
+  
+  this.value = max(min(this.value,t),f);
+  this.knob.pos = (this.range + this.value - t) / (this.range) * (w-this.knob.w-2);
+
+  // Knob
+  gfx_x = x+1+this.knob.pos; gfx_y = y+1;
+  gfx_blit(1,1,0);
+  
+  // Title
+  gfx_r = gfx_g = gfx_b = 0.6;
+  this.str1 = title;
+  gfx_measurestr(this.str1,this.str1.w,this.str1.h);
+  gfx_x = x - this.str1.w - 5 ; gfx_y = y + (h * 0.5) - (this.str1.h * 0.5);
+  gfx_drawstr(this.str1); 
+  
+  this.value;
+);
+
+function draw_chkbox(x,y,s,title)
+(
+
+  gfx_r = gfx_g = gfx_b = 0.5;
+  gfx_measurestr(title,this.str.w,this.str.h);
+  gfx_x = x - this.str.w - 5; gfx_y = y + (s * 0.5) - (this.str.h * 0.5);
+  gfx_drawstr(title);
+
+  // Mouse Logic
+  mouse_x >= x && mouse_x <= x+s && mouse_y >= y && mouse_y <= y+s && !this.disabled ? (
+    !mouse_cap ? this.hasEntered = 1;
+    mouse_cap ? this.hasClicked = 1;
+    this.hasEntered && this.hasClicked ? this.canChange = 1;
+  ) : (
+    this.hasEntered = this.hasClicked = this.canChange = 0;
+  );
+  !mouse_cap ? (this.canChange = 0;);
+
+  this.canChange ? (
+    this.checked = 1-this.checked;
+    this.hasEntered = this.hasClicked = this.canChange = 0;
+    _sliderDirty = 1;
+  );
+
+  // Frame
+  gfx_r = gfx_g = gfx_b = 0.4;
+  gfx_rect(x,y,s,s);
+  gfx_r = gfx_g = gfx_b = 0.15;
+  gfx_rect(x+1,y+1,s-2,s-2);
+  
+  // Checked
+  this.checked ? (
+    gfx_r = 0.9; gfx_g = 0.5; gfx_b = 0;
+    gfx_rect(x+2,y+2,s-4,s-4);
+  );
+    
+  this.checked; 
+);
+
+/* Background */
+
+gfx_x = 0; gfx_y = 0;
+gfx_blit(0,1,0);
+
+// sliders
+
+gfx_setfont(1,"Arial",14,'b');
+
+slider3 = s3.draw_hselector(115,50,200,20,0,8,1,0,"LF Filter");
+gfx_x = 320;
+strMem = 600000;
+gfx_drawstr(strMem[slider3]);
+
+slider4 = s4.draw_hselector(115,80,200,20,0,11,1,0,"Attack Mode");
+gfx_x = 320;
+strMem = 600010;
+gfx_drawstr(strMem[slider4]);
+
+slider5 = s5.draw_hslider(115,110,200,20,-30,0,1,0,"dB","Push Down");
+slider6 = s6.draw_hslider(115,140,200,20,0,30,1,0,"dB","Pull Up");
+slider7 = s7.draw_hslider(115,170,200,20,-10,0,1,-5,"","Recovery");
+slider8 = s8.draw_hslider(115,200,200,20,0,10,1,0,"","HF De-Emphasis");
+slider9 = s9.draw_hslider(115,230,200,20,-20,20,1,0,"dB","Output");
+
+slider2 = s2.draw_chkbox(115,274,10,"Filter Side Chain");
+slider10 = s10.draw_hslider(260,269,100,20,1,10,0.1,10,"s","Display Speed");
+
+_sliderDirty ? (
+  process_slider();
+  _sliderDirty = 0;
+);
+
+// GR START
+
+/* CURSOR */
+
+gfx_a = 0.5;
+gfx_r = 1; gfx_g = 1; gfx_b = 0;
+
+cursor = i / step;
+gfx_x = cursor + gr_pos_x; gfx_y = gr_pos_y;
+gfx_lineto(cursor + gr_pos_x,200+gr_pos_y,1);
+
+/* CURVE */
+
+gfx_a = 0.5;
+gfx_r = 1; gfx_g = 1; gfx_b = 1;
+gfx_x = gr_pos_x; gfx_y = y_mem;
+
+dloop = 0;
+loop (loopsize,
+  y_mem = gfxmem[dloop * step] + gr_pos_y;
+  x_mem = dloop + gr_pos_x;
+  gfx_lineto(x_mem,y_mem,1);  
+  dloop += 1;  
+);
+
+gfx_a = 1;
+gfx_r = 1; gfx_g = 0.5; gfx_b = 0;
+gfx_x = gr_pos_x; gfx_y = y_mem2;
+
+dloop2 = 0;
+loop (loopsize, 
+  rms = sqrt(s +=  0.005 * ( gfxmem[dloop2 * step]^2 - s ));
+  y_mem2 = rms + gr_pos_y;
+  x_mem2 = dloop2 + gr_pos_x;
+  gfx_lineto(x_mem2,y_mem2,1);
+  dloop2 += 1;
+);
+
+// GR END
+
+// Statistics
+
+gfx_setfont(1,"Arial",14,'b');
+
+play_state ? (
+  peak = peak2 = 20 * log10(genv/10)+20;
+  peak = peak > p_tmp ? peak : p_tmp;
+  p_tmp = peak;
+  peak2 = peak2 < p_tmp2 ? peak2 : p_tmp2;
+  p_tmp2 = peak2;
+);
+
+gfx_a = 0.7;
+gfx_r = 1; gfx_g = 0.5; gfx_b = 0.2;
+gfx_x = x_pos+12; gfx_y = y_pos + 60;
+gfx_drawstr("Dyn.Range Reduction:");
+
+gfx_x = x_pos+160;
+str = sprintf(#,"%.2f",peak-peak2);
+strcat(str," dB");
+gfx_drawstr(str);
+
+gfx_r = 0.7; gfx_g = 0.7; gfx_b = 0.7;
+gfx_x = x_pos+12; gfx_y = y_pos + 75;
+gfx_drawstr("Max Gain: ");
+
+gfx_x = x_pos+160;
+str = sprintf(#,"%.2f",peak);
+strcat(str," dB");
+gfx_drawstr(str);
+
+gfx_x = x_pos+12; gfx_y = y_pos + 90;
+gfx_drawstr("Max Attenuation: ");
+
+gfx_x = x_pos+160;
+str = sprintf(#,"%.2f",peak2);
+strcat(str," dB");
+gfx_drawstr(str);
+
+mouse_cap && mouse_y < mtr_y + 230 &&  mouse_y > mtr_y ? (resetDisplay());
+mouse_cap && mouse_y > mtr_y + 230 ? (p_tmp = p_tmp2 = 0;);
+
+gfx_x = 12; gfx_y = 580;
+gfx_r = gfx_g = gfx_b = 1; gfx_a = 0.2;
+gfx_setfont(1,"Arial",12);
+gfx_drawstr(buildStr);
