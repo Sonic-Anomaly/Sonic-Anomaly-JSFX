@@ -1,0 +1,459 @@
+desc:Transpire
+version: 1.0
+author: SonicAnomaly
+changelog: init
+provides: transpire_gfx/*
+
+/*****************************************************
+Copyright (C) 2015-2016 Stige T.
+License: http://jsplugins.supermaailma.net/license.php
+*****************************************************/
+
+EffectName: Transpire
+VendorString: Sonic Anomaly
+VendorVersion: 1000
+UniqueId: 'TRPE'
+
+slider1:0<-10,10,0.1>-Attack
+slider2:0<-10,10,0.1>-Sustain
+slider7:0.5<0,1,0.1>-Sensitivity
+slider10:0<-12,12,0.1>-Output
+
+filename:0,transpire_gfx/bg.png
+filename:1,transpire_gfx/knob_1.png
+filename:2,transpire_gfx/knob_2.png
+filename:3,transpire_gfx/knob_3.png
+filename:4,transpire_gfx/knob_4.png
+filename:5,transpire_gfx/credits.png
+filename:6,transpire_gfx/clip.png
+
+resource:0,1,2,3,4,5,6
+
+@init
+
+!"#define VAL(A) (A)" "//";
+
+buildStr = "Build 170506";
+
+function RGBA(R,G,B,A) (
+  this.r = R; this.g = G; this.b = B; this.a = A;
+);
+
+function Interpolate(A, B, X) (
+  A + ((B-A)*X);
+);
+
+function Curve(input,expVal) (
+    input = 1/(input+1);
+    input = 1-(input^expVal);
+);
+
+function FillEnvLut(start,end,step) (
+  this.len = end-start;
+  this.maxVal = this.len * step;
+  this.start = start;
+  this.end = end;
+  this.invStep = 1/step;
+  this.i = 0;
+  loop(this.len,
+    this.v = this.i * step;
+    lutMem = start;
+    lutMem[this.i] = Curve(this.v,this.expVal);
+    this.i += 1;
+  );
+);
+
+function GetLutVal(in) (
+  this.index = max(min(in * this.invStep,this.end),0);
+  this.floorIndex = floor(this.index);
+  lutMem = this.start;
+  this.lo = lutMem[this.floorIndex];
+  this.hi = lutMem[this.floorIndex+1];
+  this.frac = this.index - this.floorIndex;
+  Interpolate(this.lo, this.hi, this.frac);
+);
+
+function RMSInit(weight_ms)
+instance (weight)(
+  weight = 1-exp(-1/(weight_ms / 1000 * srate));
+);
+
+function RMS(input)
+instance (s,rms,weight)(
+  rms = sqrt(s +=  weight * ( input^2 - s ));
+);
+
+function DelayInit(start,end)
+(
+  this.sloop = this.splay = start;
+  this.length = end-start;
+);
+
+function Delay(input)
+(
+  this.sloop[this.sindex] = input;
+  this.sindex += 1;
+  this.sindex > this.length ? this.sindex = 0;
+  this.splay[this.sindex];
+);
+
+function FollowerInit(attack,release,smoothing) (
+  this.a = exp(-1/(srate*attack/1000));
+  this.r = exp(-1/(srate*release/1000));
+  this.s = exp(-1/(srate*smoothing/1000));
+  this.a2 = 1-this.a;
+  this.r2 = 1-this.r;
+);
+
+function Follower(in) (
+  this.tmp = max(in + this.s * (this.tmp-in),in);
+  this.e <  this.tmp ? (
+    this.e = this.a * this.e + this.a2 * this.tmp;
+  ) : (
+    this.e = this.r * this.e + this.r2 * this.tmp;
+  );
+);
+
+function FollowerZeroAtt(in) (
+  this.tmp = max(in + this.s * (this.tmp-in),in);
+  this.e <  this.tmp ? (
+    this.e = this.tmp;
+  ) : (
+    this.e = this.r * this.e + this.r2 * this.tmp;
+  );
+);
+
+function FollowerZeroRel(in) (
+  this.tmp = max(in + this.s * (this.tmp-in),in);
+  this.e <  this.tmp ? (
+    this.e = this.a * this.e + this.a2 * this.tmp;
+  ) : (
+    this.e = this.tmp;
+  );
+);
+
+function HFLFInit(freq)
+instance(n0,weight)
+(
+  n0 = 0;
+  weight = 1-exp(-2*$pi*freq/srate);
+);
+
+function HFcut(input)
+instance(out,n0,weight)
+(  
+  out = (n0+=((input-n0)*weight));
+);
+
+function LFcut(input)
+instance(out,n0,weight)
+(
+  out = input - (n0+=((input-n0)*weight));
+);
+
+function TransuInit()
+instance(e0,e1,e2,e3,e4,d0,d1)
+(
+  e0.FollowerInit(0,50,100);
+  e1.FollowerInit(5,0,0);
+  e2.FollowerInit(1,0,5);
+  e3.FollowerInit(0,50,200);
+  e4.FollowerInit(100,0,0);
+  
+  preDelay = (srate/44100) * 88;
+  
+  d0.DelayInit(1000,1000+preDelay);
+  d1.DelayInit(2000,2000+preDelay);   
+);
+
+function TransuSetSustain(val_ms)
+instance(e4)
+(
+  e4.FollowerInit(val_ms,0,0.5);
+);
+
+function TransuSetSmooth(val_ms)
+instance(e0)
+(
+  e0.FollowerInit(0,50,val_ms);
+);
+
+function Transu(inL,inR)
+instance(e0,e1,e2,e3,e4,sgn,d0,d1,outL,outR,dryL,dryR)
+(  
+  
+  sgn.in = max(abs(inL),abs(inR)) + norm;
+  sgn.in = sgn.in^0.5 * 2;
+  sgn.c = e0.FollowerZeroAtt(sgn.in);
+  
+  inL = dryL = d0.Delay(inL);
+  inR = dryR = d1.Delay(inR);
+    
+  attack.exp ? (
+      
+    sgn.at = ( sgn.c - e1.FollowerZeroRel(sgn.c) );
+    sgn.at = e2.FollowerZeroRel(sgn.at);
+    //sgn.at = 1/(sgn.at+1);
+    //sgn.at = 1-(sgn.at^attack.exp);
+    sgn.at = l0.GetLutVal(sgn.at);
+            
+    adir > 0 ? (
+      sgn.at *= 1.2;
+      inL = (inL * sgn.at) + inL;
+      inR = (inR * sgn.at) + inR;
+    );
+    adir < 0 ? (
+      inL -= (inL * sgn.at);
+      inR -= (inR * sgn.at);
+    );    
+    
+  );
+    
+  sustain.exp ? (
+        
+    sgn.su = ( e3.FollowerZeroAtt(sgn.c) - sgn.c );
+    sgn.su = e4.FollowerZeroRel(sgn.su);
+    //sgn.su = 1/(sgn.su+1);
+    //sgn.su = 1-(sgn.su^sustain.exp);
+    sgn.su = l1.GetLutVal(sgn.su);
+        
+    sdir > 0 ? (    
+      sgn.su *= 3.98;
+      inL += (inL * (sgn.su));
+      inR += (inR * (sgn.su));
+    );
+    sdir < 0 ? (
+      inL -= (inL * (sgn.su));
+      inR -= (inR * (sgn.su));
+    );
+  );
+    
+  outL = inL;
+  outR = inR;  
+);
+
+function ProcessSliders() (
+  attack.exp = abs(slider1/10);
+  adir = sign(slider1);
+  attack.exp = adir > 0 ? attack.exp^2 * 20 : attack.exp^2 * 5;
+  
+  l0.expVal = attack.exp;
+  l0.FillEnvLut(100000,110000,0.01);
+  
+  sustain.exp = abs(slider2/10);
+  sustain.exp = sustain.exp^2 * 5;
+  sdir = sign(slider2);
+  l1.expVal = sustain.exp;
+  l1.FillEnvLut(200000,210000,0.01);  
+  
+  output = 10^(slider10/20);
+      
+  prm.sens = 1-slider7;
+  t.TransuSetSmooth(Interpolate(10,1000,prm.sens^3.431));
+          
+  sdir > 0 ? (
+    t.TransuSetSustain(750);
+  ) : (
+    t.TransuSetSustain(100);  
+  );
+  
+);
+
+/* COLORS RGBA */
+m0.RGBA(1,1,1,0.6); // Meter1
+m1.RGBA(1,1,1,0.6); // Meter2
+s1.RGBA(1,1,1,0.3); // Knob1
+s2.RGBA(1,1,1,0.3); // Knob2
+s7.RGBA(1,1,1,0.3); // Knob3
+s10.RGBA(1,1,1,0.3); // Knob4
+/* COLORS END */
+
+t.TransuInit();
+_playBackInit = 0;
+
+mtr.att = 1;
+mtr.sus = 1;
+
+@slider
+
+s1.value = slider1;
+s2.value = slider2;
+s7.value = slider7;
+s10.value = slider10;
+
+ProcessSliders();
+
+@block
+
+!_playBackInit ? (
+  preDelay = (srate/44100) * 88;
+  pdc_delay = preDelay;
+  pdc_bot_ch = 0; pdc_top_ch = 2;
+  _playBackInit = 1;
+);
+
+attack.exp ? amax = max(amax,t.sgn.at);
+sustain.exp ? smax = max(smax,t.sgn.su);
+
+mtr.att = adir > 0 ? 1+amax : 1-amax;
+mtr.sus = sdir > 0 ? 1+smax : 1-smax;
+
+norm = (rand(1) * 0.000000000000001);
+
+@sample
+
+inL = spl0;
+inR = spl1;
+
+t.Transu(inL,inR);
+
+spl0 = t.outL;
+spl1 = t.outR;
+
+spl0 *= output;
+spl1 *= output;
+
+(abs(spl0) > 0.989 || abs(spl1) > 0.989) ? (
+  spl0 = min(max(spl0,-0.989),0.989);
+  spl1 = min(max(spl1,-0.989),0.989);
+  mtr.over = 1;
+);
+
+@gfx 340 484
+
+function draw_pot(x,y,fw,fh,fn,f,t,s,d,id,uStr)
+(
+  
+  this.range = abs(f - t);
+  this.steps = this.range / s;
+  this.offset = f < 0 ? abs(f) : 0;
+  
+  // Mouse Logic
+  mouse_x >= x && mouse_x <= x+fw && mouse_y >= y && mouse_y <= y+fh && !this.disabled ? (
+    !mouse_cap ? this.hasEntered = 1;
+    mouse_cap ? this.hasClicked = 1;
+    mouse_cap & 4 ? this.value = d;
+    this.hasEntered && this.hasClicked ? this.canChange = 1;
+  ) : (
+    this.hasEntered = this.hasClicked = 0;
+  );
+  !mouse_cap ? this.canChange = 0;
+  
+  // Process
+  this.canChange ? (
+    this.value += (this.y_tmp - mouse_y) * s;
+  );
+  
+  this.y_tmp = mouse_y;
+
+  // Update
+  !this.init || this.value.temp != this.value ? (
+    this.value = max(this.value,f);
+    this.value = min(this.value,t);
+    this.normalized = (this.value+this.offset) * (1/(this.steps * s)) * 0.999;
+    this.rpos = floor((1 - this.normalized) + fn * this.normalized) * fh;
+    
+    _sliderDirty = 1;
+    this.value.temp = this.value;
+    this.init = 1;
+  );
+  
+  coordinatelist = 0;
+  coordinatelist[0] = 0;
+  coordinatelist[1] = this.rpos;
+  coordinatelist[2] = coordinatelist[6] = fw;
+  coordinatelist[3] = coordinatelist[7] = fh;
+  coordinatelist[4] = x;
+  coordinatelist[5] = y;
+  gfx_a = 1;
+  gfx_blitext(id, coordinatelist, 0);
+  
+  /* Readout */
+  gfx_r = this.r; gfx_g = this.g; gfx_b = this.b; gfx_a = this.a;
+  this.valStr = strcat(sprintf(#,"%.1f",this.value),uStr);
+  gfx_measurestr(this.valStr,this.valStr.w,this.valStr.h);
+  gfx_x = x+(fw*0.5)-(this.valStr.w*0.5); gfx_y = y + fh - 5;
+  gfx_drawstr(this.valStr);
+  
+  this.value;
+);
+
+function Dynmeter(in,x_pos,y_pos)
+instance(gfx,r,g,b,a)
+(
+  gfx_x = 61+x_pos; gfx_y = y_pos+2;
+  in = max(in,0.316);
+  in = min(in,3.16);
+  gfx_r = r; gfx_g = g; gfx_b = b;  gfx_a = a;
+  gfx = (20 * log10(in) / 10 * 59) + 61;
+  gfx_rectto( gfx + x_pos, 10 + y_pos);    
+);
+
+function AnimateLed(in,x,y,fw,fh,fn,id)
+(
+  this.aPos = floor(in + (fn-1) * in) * fh;
+  
+  this.coordinatelist[0] = 0;
+  this.coordinatelist[1] = this.aPos;
+  this.coordinatelist[2] = this.coordinatelist[6] = fw;
+  this.coordinatelist[3] = this.coordinatelist[7] = fh;
+  this.coordinatelist[4] = x;
+  this.coordinatelist[5] = y;
+  gfx_a = 1;
+  gfx_blitext(id, this.coordinatelist, 0);
+  
+);
+
+gfx_x = gfx_y = 0;
+gfx_blit(0,1,0);
+gfx_setfont(1,"Arial",16);
+
+slider1 = s1.draw_pot(23,119,134,134,101,-10,10,0.1,0,1,"");
+slider2 = s2.draw_pot(183,119,134,134,101,-10,10,0.1,0,2,"");
+slider7 = s7.draw_pot(23,279,134,134,101,0,1,0.01,0.5,3,"");
+slider10 = s10.draw_pot(183,279,134,134,101,-12,12,0.1,0,4," dB");
+
+_sliderDirty ? (
+  ProcessSliders();
+  _sliderDirty = 0;
+);
+
+m0.Dynmeter(mtr.att,30,78);
+m1.Dynmeter(mtr.sus,190,78);
+amax *= 0.7;
+smax = 0;
+
+AnimateLed(mtr.over,158,72,24,24,10,6);
+mtr.over *= 0.90;
+
+//gfx_x = 10; gfx_y = 440;
+//gfx_rectto(330,480);
+
+mouse_x > 10 && mouse_x < 330 && mouse_y > 440 && mouse_y < 480 ? (
+  !mouse_cap ? (
+    credits.inArea = 1;
+  );
+) : (
+  credits.inArea = 0;
+);
+
+credits.inArea ? (
+  !credits.toggle && mouse_cap ? (
+    credits.show = 1-credits.show;
+    credits.toggle = 1;
+  );
+  !mouse_cap ? credits.toggle = 0;
+);
+
+credits.show ? (
+  gfx_x = gfx_y = 0; gfx_a = 1;
+  gfx_blit(5,1,0);
+  
+  gfx_x = 20; gfx_y = 460;
+  gfx_r = gfx_g = gfx_b = 1; gfx_a = 0.33;
+  gfx_setfont(1,"Arial",12);
+  gfx_drawstr(buildStr);
+  
+  !credits.toggle && mouse_cap ? credits.show = 0;
+);
+

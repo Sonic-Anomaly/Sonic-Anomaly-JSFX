@@ -1,0 +1,530 @@
+desc:SEGX2 Gate
+version: 1.0
+author: SonicAnomaly
+changelog: init
+provides: seg_gfx/*
+
+/*****************************************************
+Copyright (C) 2017 Stige T.
+License: http://jsplugins.supermaailma.net/license.php
+*****************************************************/
+
+EffectName: SEGX2 Gate
+VendorString: Sonic Anomaly
+VendorVersion: 1000
+UniqueId: 'SGX2'
+
+slider1:0<0,10,0.1>-Attack
+slider2:20<5,1000,1>-Release Lo
+slider3:20<5,1000,1>-Release Hi
+slider4:-45<-90,0,1>-Threshold Lo
+slider5:-45<-90,0,1>-Threshold Hi
+slider6:500<100,8000,10>-Crossover
+slider7:2<0.5,10,0.1>-Ratio [Exp<>Gate]
+slider8:0<0,3,1{Output,Detector,Lo-band,Hi-band}>-Monitor
+slider9:0<0,1,1{Off,On}>-Pre-Gate
+slider10:0<0,100,1>-Band Link
+
+filename:0,seg_gfx/knob_sm.png
+filename:1,seg_gfx/bg.png
+
+resource:0,1
+
+@init
+
+!"#define VAL(A) (A)" "//";
+
+buildStr = "build 170206";
+
+selTbl = 1000000;
+selTbl[0] = "Output";
+selTbl[1] = "Detector";
+selTbl[2] = "Lo-Band";
+selTbl[3] = "Hi-Band";
+selTbl = 1000010;
+selTbl[0] = "Off";
+selTbl[1] = "On";
+
+prm.maxRelTime = 1000;
+
+function Interpolate(A, B, X) (
+  A + ((B-A)*X);
+);
+
+function Delay_init(start,end)
+(
+  //freembuf(0);
+  this.sloop = this.splay = start;
+  this.length = end-start;
+);
+
+function Delay(input)
+(
+  this.sloop[this.sindex] = input;
+  this.sindex += 1;
+  this.sindex > this.length ? this.sindex = 0;
+  this.splay[this.sindex];
+);
+
+function HFLF_init(freq)
+instance(n0,weight)
+(
+  n0 = 0;
+  weight = 1-exp(-2*$pi*freq/srate);
+);
+
+function HFcut(input)
+instance(out,n0,weight)
+(  
+  out = (n0+=((input-n0)*weight));
+);
+
+function LFcut(input)
+instance(out,n0,weight)
+(
+  out = input - (n0+=((input-n0)*weight));
+);
+
+function FollowerInit(attack,release,smoothing) (
+  this.a = exp(-1/(srate*attack/1000));
+  this.r = exp(-1/(srate*release/1000));
+  this.s = exp(-1/(srate*smoothing/1000));
+  this.a2 = 1-this.a;
+  this.r2 = 1-this.r;
+  this.w = 1-exp(-2*$pi*28/srate);
+  //this.h = 0.5;
+);
+
+function Follower(in) (
+  this.tmp = max(in + this.s * (this.tmp-in),in);
+  this.e <  this.tmp ? (
+    this.e = this.a * this.e + this.a2 * this.tmp;
+    this.e2 = max(this.e, this.e2);
+  ) : (
+    this.e = this.r * this.e + this.r2 * this.tmp;
+    this.e < (this.e2 * this.h) ? (
+      this.e2 = this.r * this.e2 + this.r2 * this.tmp;
+    );
+  );
+  this.e3 = (this.smooth += this.w * (this.e2 - this.smooth));
+  max(this.e3,this.e2);
+);
+
+function InitExpanderGate(threshold,ratio)
+instance(thresh,rat)
+(
+  thresh = threshold;
+  rat = ratio;
+);
+
+function ExpanderGate(input,threshold)
+instance(env,e,thresh,rat,eInv)
+global(prm.ratio)
+(
+  env = min(abs(input),thresh);
+  env = env / thresh;
+  env = env^rat;
+  env = 1-e.Follower(env);
+);
+
+function ProcessSliders() (
+
+  prm.attack = slider1;
+  prm.release = slider2;
+  prm.release2 = slider3;
+  prm.threshold = 10^(slider4/20);
+  prm.threshold2 = 10^(slider5/20);
+  prm.crossover = slider6;
+  prm.ratio = slider7;
+  prm.mon = slider8;
+  prm.lat = slider9;
+  prm.lb = prm.hb = 1;
+  prm.mon == 2 ? prm.hb = 0;
+  prm.mon == 3 ? prm.lb = 0;
+  prm.chlink = slider10/100;
+  prm.chlinkInv = 1-prm.chlink;
+  prm.hysteresis = prm.release / prm.maxRelTime;
+  prm.hysteresis2 = prm.release2 / prm.maxRelTime;
+
+  _cotmp != prm.crossover ? (
+    f0.HFLF_init(prm.crossover);
+    f1.HFLF_init(prm.crossover);
+    f2.HFLF_init(prm.crossover);
+    f3.HFLF_init(prm.crossover);
+    _cotmp = prm.crossover;
+  );
+
+  prm.pred = floor(srate/1000);
+  prm.pred = max(floor(srate * (prm.attack / 1000)),prm.pred);
+  
+  d0.Delay_init(1000,1000+prm.pred);
+  d1.Delay_init(3000,3000+prm.pred);
+  d2.Delay_init(5000,5000+prm.pred);
+  d3.Delay_init(7000,7000+prm.pred);
+  d4.Delay_init(9000,9000+prm.pred);
+  d5.Delay_init(11000,11000+prm.pred);
+
+  prm.lat ? (
+    pdc_delay = prm.pred;
+    pdc_bot_ch = 0; pdc_top_ch = 2;
+  );
+  
+  lo.InitExpanderGate(prm.threshold,prm.ratio);
+  hi.InitExpanderGate(prm.threshold2,prm.ratio);
+  lo.e.FollowerInit(prm.attack,prm.release,20);
+  hi.e.FollowerInit(prm.attack,prm.release2,20);
+  lo.e.h = Interpolate(0.33,2,prm.hysteresis^0.5);
+  hi.e.h = Interpolate(0.33,2,prm.hysteresis2^0.5);
+  
+);
+
+@slider
+
+s1.value = slider1;
+s2.value = slider2;
+s3.value = slider3;
+s4.value = slider4;
+s5.value = slider5;
+s6.value = slider6;
+s7.value = slider7;
+s8.value = slider8;
+s9.value = slider9;
+s10.value = slider10;
+
+ProcessSliders();
+
+@block
+
+norm = rand()*0.000000001;
+
+@sample
+
+l.in = spl0;
+r.in = spl1;
+
+l.in.dn = l.in + norm;
+r.in.dn = r.in + norm;
+
+l.hpf = f0.LFcut(l.in.dn);
+l.lpf = f1.HFcut(l.in.dn);
+r.hpf = f2.LFcut(r.in.dn);
+r.lpf = f3.HFcut(r.in.dn);
+
+lpfMax = max(l.lpf,r.lpf);
+hpfMax = max(l.hpf,r.hpf);
+
+lo.gate = lo.ExpanderGate(lpfMax,prm.threshold);
+hi.gate = hi.ExpanderGate(hpfMax,prm.threshold);
+
+prm.chlink ? (
+  //gMax = (lo.gate+hi.gate)*0.5;
+  gMax = min(lo.gate,hi.gate);
+  lo.gate = (lo.gate * prm.chlinkInv) + (gMax * prm.chlink);
+  hi.gate = (hi.gate * prm.chlinkInv) + (gMax * prm.chlink);
+);
+
+prm.lat ? (
+  l.in = d0.Delay(l.in);
+  l.lpf = d1.Delay(l.lpf);
+  l.hpf = d2.Delay(l.hpf);
+  r.in = d3.Delay(r.in);
+  r.lpf = d4.Delay(r.lpf);
+  r.hpf = d5.Delay(r.hpf);
+);
+
+l.in = l.in - (l.lpf * lo.gate) - (l.hpf * hi.gate);
+r.in = r.in - (r.lpf * lo.gate) - (r.hpf * hi.gate);
+
+!prm.mon ? (
+  spl0 = l.in;
+  spl1 = r.in;
+) : (
+  prm.mon == 1 ? (
+    spl0 = (l.lpf * lo.gate) + (l.hpf * hi.gate);
+    spl1 = (r.lpf * lo.gate) + (r.hpf * hi.gate);
+  );
+  prm.mon == 2 ? (
+    spl0 = l.lpf * (1-lo.gate);
+    spl1 = r.lpf * (1-lo.gate);
+  );
+  prm.mon == 3 ? (
+    spl0 = l.hpf * (1-hi.gate);
+    spl1 = r.hpf * (1-hi.gate);
+  );
+);
+
+mtr.lo = max(1-max(lo.gate,lo.gate),mtr.lo);
+mtr.hi = max(1-max(hi.gate,hi.gate),mtr.hi);
+
+//spl8 = lo.gate;
+//spl9 = hi.gate;
+
+@gfx 450 500
+
+function CheckBoxInit(x,y,id,title)
+(
+  this.x = x; this.y = y; this.title = title; this.id = id;
+  gfx_getimgdim(id, this.box.w, this.box.h);
+);
+
+function CheckBox()
+(
+  // Mouse Logic
+  mouse_x >= this.x && mouse_x <= this.x+this.box.w && mouse_y >= this.y && mouse_y <= this.y+this.box.h && !_sliderDisabled ? (
+    !mouse_cap ? this.hasEntered = 1;
+    mouse_cap ? this.hasClicked = 1;
+    this.hasEntered && this.hasClicked ? this.canChange = 1;
+  ) : (
+    this.hasEntered = this.hasClicked = this.canChange = 0;
+  );
+  !mouse_cap ? (this.canChange = 0;);
+
+  this.canChange ? (
+    this.value = 1-this.value;
+    this.hasEntered = this.hasClicked = this.canChange = 0;
+    _sliderDirty = 1;
+  );
+
+  // Frame
+  /*
+  gfx_r = gfx_g = gfx_b = 0.6;
+  gfx_rect(this.x,this.y,this.box.w,this.box.h);
+  gfx_r = gfx_g = gfx_b = 0.15;
+  gfx_rect(this.x+1,this.y+1,this.box.w-2,this.box.h-2);
+  */
+  
+  // Checked
+  this.value ? (
+    gfx_x = this.x; gfx_y = this.y;
+    gfx_blit(this.id,1,0);
+  );
+    
+  this.value; 
+);
+
+function HsliderInit(x,y,w,h,f,t,s,d,id,unit,title)
+(
+  this.x = x; this.y = y; this.w = w; this.h = h;
+  this.f = f; this.t = t; this.s = s; this.d = d;
+  this.id = id;
+  this.unit = unit;
+  this.title = title;
+
+  gfx_getimgdim(id, this.knob.w, this.knob.h);
+  this.knob.hw = this.knob.w * 0.5;
+  this.range = abs(this.f - this.t);
+  this.dec = "%.0f";
+  this.s < 1 ? this.dec = "%.1f";
+  this.s < 0.1 ? this.dec = "%.2f";
+  this.roPosX = this.x + this.w;
+  this.roPosY = floor(this.y + (this.h*0.5));
+  this.knobY = ceil(this.y - (this.knob.h*0.5) + (this.h*0.5));
+  _sliderInitialized = 1;
+);
+
+function Hslider()
+(
+  // Frame
+  /*
+  gfx_r = gfx_g = gfx_b = 0.5;
+  gfx_rect(this.x,this.y,this.w,this.h,0);
+  */
+
+  // Mouse Logic
+  mouse_x >= this.x && mouse_x <= this.x+this.w && mouse_y >= this.y && mouse_y <= this.y+this.h && !this.disabled ? (
+    !mouse_cap ? this.hasEntered = 1;
+    mouse_cap ? this.hasClicked = 1;
+    this.hasEntered && this.hasClicked ? this.canChange = 1;
+  ) : (
+    this.hasEntered = this.hasClicked = 0;
+  );
+  !mouse_cap ? (this.canChange = 0; this.init_x = 0;);
+  
+  // Process
+  this.canChange ? (
+    mouse_cap & 8 ? (
+      !this.init_x ? this.init_x = mouse_x;
+      this.knob.input = (this.init_x - this.x - this.knob.w) + (((mouse_x/this.init_x) - 1) * 10 + this.knob.hw);
+    ) : (
+      this.knob.input = (mouse_x - this.x - this.knob.hw);
+      this.init_x = 0;
+    );
+    
+    this.knob.input.normalized = (this.knob.input / (this.w-this.knob.w-2));
+    this.value.rect = this.range*this.knob.input.normalized;
+    this.step = 1/this.s;
+    this.value.rect = ceil(this.value.rect * this.step) / this.step;
+    this.value = this.value.rect + this.f;
+    
+    mouse_cap & 4 ? this.value = this.d;
+    _sliderDirty = 1;
+  );
+  
+  this.value = max(min(this.value,this.t),this.f);
+  this.knob.pos = (this.range + this.value - this.t) / (this.range) * (this.w-this.knob.w-2);
+
+  // Knob
+  gfx_x = this.x + 1 + this.knob.pos; gfx_y = this.knobY;
+  gfx_blit(this.id,1,0);
+
+  // Readout
+  !this.noReadout ? (
+    gfx_r = gfx_g = gfx_b = 0.8;
+    this.valStr = strcat(sprintf(#,this.dec,this.value),this.unit);
+    gfx_measurestr(this.valStr,this.valStr.w,this.valStr.h);
+    gfx_x = this.roPosX; gfx_y = floor(this.roPosY - (this.valStr.h*0.5));
+    gfx_drawstr(this.valStr);
+  );
+    
+  this.value;
+);
+
+function HselectorInit(x,y,w,h,t,d,mem,id,unit,title)
+(
+  this.x = x; this.y = y; this.w = w; this.h = h;
+  this.t = t; this.d = d; this.mem = mem; this.id = id;
+  this.unit = unit;
+  this.title = title;
+
+  gfx_getimgdim(id, this.knob.w, this.knob.h);  
+  this.knob.hw = this.knob.w * 0.5;
+  this.range = this.t;
+  this.dec = "%.2f";
+  this.roPosX = this.x + this.w;
+  this.roPosY = floor(this.y + (this.h*0.5));
+  this.knobY = ceil(this.y - (this.knob.h*0.5) + (this.h*0.5));
+  _sliderInitialized = 1;
+);
+
+function Hselector()
+(
+  // Frame
+  /*
+  gfx_r = gfx_g = gfx_b = 0.5;
+  gfx_rect(this.x,this.y,this.w,this.h,0);
+  */
+
+  // Mouse Logic
+  mouse_x >= this.x && mouse_x <= this.x+this.w && mouse_y >= this.y && mouse_y <= this.y+this.h && !this.disabled ? (
+    !mouse_cap ? this.hasEntered = 1;
+    mouse_cap ? this.hasClicked = 1;
+    this.hasEntered && this.hasClicked ? this.canChange = 1;
+  ) : (
+    this.hasEntered = this.hasClicked = 0;
+  );
+  !mouse_cap ? (this.canChange = 0; this.init_x = 0;);
+  
+  // Process
+  this.canChange ? (
+    mouse_cap & 8 ? (
+      !this.init_x ? this.init_x = mouse_x;
+      this.knob.input = (this.init_x - this.x - this.knob.w) + (((mouse_x/this.init_x) - 1) * 100 + this.knob.hw);
+    ) : (
+      this.knob.input = (mouse_x - this.x - this.knob.hw);
+      this.init_x = 0;
+    );
+    
+    this.knob.input.normalized = this.knob.input / (this.w-this.knob.w-2);
+    this.value.rect = this.range*this.knob.input.normalized;
+    this.value.rect = ceil(this.value.rect);
+    this.value = this.value.rect;
+    
+    mouse_cap & 4 ? this.value = this.d;
+    _sliderDirty = 1;
+  );
+  
+  this.value = max(min(this.value,this.t),this.f);
+  this.knob.pos = (this.range + this.value - this.t) / (this.range) * (this.w-this.knob.w-2);
+
+  // Knob
+  gfx_x = this.x + 1 + this.knob.pos; gfx_y = this.knobY;
+  gfx_blit(this.id,1,0);
+
+  // Readout
+  !this.noReadout ? (
+    gfx_r = gfx_g = gfx_b = 0.8;
+    gfxMem = this.mem;
+    this.valStr = gfxMem[this.value];
+    gfx_measurestr(this.valStr,this.valStr.w,this.valStr.h);
+    gfx_x = this.roPosX; gfx_y = floor(this.roPosY - (this.valStr.h*0.5));
+    gfx_drawstr(this.valStr);
+  );
+    
+  this.value;
+);
+
+function draw_meter(redux,y_pos,drawlabels)
+instance(col1,col2,x_pos)
+(
+
+  x_pos = 125;
+  
+  gfx_r = 1; gfx_g = 1; gfx_b = 1; gfx_a = 0.75;
+  gfx_x = 199+x_pos;
+  gfx_y = y_pos+1;
+  redux = floor(max(sqrt( redux )*200,1));
+  gfx_rectto(redux+x_pos,9+y_pos);
+
+  redux == 1 ? (
+    col1 = 1;
+  );
+  redux >= 200 ? (
+    col2 = 1;
+  );
+
+  gfx_a = 1;
+  gfx_g = 0.3 * col1; gfx_b = 0; gfx_r = col1;
+  gfx_circle(x_pos-16,4+y_pos,2,1);
+
+  gfx_b = gfx_r = 0; gfx_g = col2;
+  gfx_circle(216+x_pos,4+y_pos,2,1);
+  
+  col1 = max(col1-0.05,0.22);
+  col2 = max(col2-0.05,0.22);
+
+);
+
+gfx_x = gfx_y = 0;
+gfx_blit(1,1,0);
+gfx_setfont(1,"Arial",14,'b');
+
+!_sliderInit ? (
+  s1.HsliderInit(120,39,250,20,0,10,0.1,0,0," ms","Attack");
+  s2.HsliderInit(120,69,250,20,5,prm.maxRelTime,10,20,0," ms","Release Lo");
+  s3.HsliderInit(120,99,250,20,5,prm.maxRelTime,10,20,0," ms","Release Hi");
+  s4.HsliderInit(120,139,250,20,-90,0,1,-45,0," dB","Threshold Lo");
+  s5.HsliderInit(120,169,250,20,-90,0,1,-45,0," dB","Threshold Hi");
+  s6.HsliderInit(120,209,250,20,100,8000,10,500,0," Hz","Crossover");
+  s10.HsliderInit(120,239,250,20,0,100,1,0,0," %","Band Link");
+  s7.HsliderInit(120,269,250,20,0.5,10,0.1,2,0,"","Ratio");
+  s8.HselectorInit(120,309,250,20,3,0,1000000,0,"","Monitor");
+  s9.HselectorInit(120,339,250,20,1,0,1000010,0,"","Pre-Gate");
+  _sliderInit = 1;
+);
+
+slider1 = s1.Hslider();
+slider2 = s2.Hslider();
+slider3 = s3.Hslider();
+slider4 = s4.Hslider();
+slider5 = s5.Hslider();
+slider6 = s6.Hslider();
+slider7 = s7.Hslider();
+slider8 = s8.Hselector();
+slider9 = s9.Hselector();
+slider10 = s10.Hslider();
+
+_sliderDirty ? (
+  ProcessSliders();
+  _sliderDirty = 0;
+);
+
+gfx_setfont(1,"Arial",14,'b');
+
+m0.draw_meter(mtr.lo,398,0);
+m1.draw_meter(mtr.hi,410,1);
+mtr.lo = mtr.hi = 0;
+
+gfx_x = 380; gfx_y = 10;
+gfx_r = gfx_g = gfx_b = 1; gfx_a = 0.2;
+gfx_setfont(1,"Arial",12);
+gfx_drawstr(buildStr);

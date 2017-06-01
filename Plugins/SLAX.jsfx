@@ -1,0 +1,443 @@
+desc:S.LA.X
+version: 1.0
+author: SonicAnomaly
+changelog: init
+provides: slax_gfx/*
+
+/*****************************************************
+Copyright (C) 2016 Sonic Anomaly.
+License: http://sonic.supermaailma.net/license.php
+*****************************************************/
+
+EffectName: S.LA.X
+VendorString: Sonic Anomaly
+VendorVersion: 1000
+UniqueId: 'SLAX'
+
+slider1:0<0,10,0.1>-Peak
+slider2:0<0,10,0.1>-Gain
+slider3:5<0,10,0.1>-Comp/Lim
+slider4:10<0,10,0.1>-Emphasis
+slider5:1<0,2,1{Flat,Fat 1,Fat 2}>-Mode
+
+filename:0,slax_gfx/bg.png
+filename:1,slax_gfx/bigpot.png
+filename:2,slax_gfx/prepot.png
+filename:3,slax_gfx/needles.png
+filename:4,slax_gfx/opt.png
+filename:5,slax_gfx/optbut.png
+
+resource:0,1,2,3,4,5
+
+@init
+
+!"#define VAL(A) (A)" "//";
+
+buildStr = "Build 170206";
+
+t005 = exp(-1/(srate*0.0005));
+t01 = exp(-1/(srate*0.001));
+t05 = exp(-1/(srate*0.005));
+t10 = exp(-1/(srate*0.01));
+t20 = exp(-1/(srate*0.02));
+t50 = exp(-1/(srate*0.05));
+t60 = exp(-1/(srate*0.06));
+t100 = exp(-1/(srate*0.1));
+t200 = exp(-1/(srate*0.2));
+t500 = exp(-1/(srate*0.5));
+t1000 = exp(-1/(srate*1));
+t2000 = exp(-1/(srate*2));
+
+function HFLF_init(freq)
+instance(n0,weight)
+(
+  n0 = 0;
+  weight = 1-exp(-2*$pi*freq/srate);
+);
+
+function HFcut(input)
+instance(out,n0,weight)
+(
+  out = (n0+=((input-n0+0.000000001)*weight));
+);
+
+function LFcut(input)
+instance(out,n0,weight)
+(
+  out = input - (n0+=((input-n0+0.000000001)*weight));
+);
+
+function Interpolate(A, B, X) (
+  A + ((B-A)*X);
+);
+
+function rms_init(weight_ms)
+instance (weight)(
+  weight = 1-exp(-1/(weight_ms / 1000 * srate));
+);
+
+function rms(input)
+instance (s,rms,weight)(
+  rms = sqrt(s +=  weight * ( input^2 - s ));
+);
+
+function FollowerInit(attack,release,smoothing) (
+  this.a = exp(-1/(srate*attack/1000));
+  this.r = exp(-1/(srate*release/1000));
+  this.s = exp(-1/(srate*smoothing/1000));
+  this.a2 = 1-this.a;
+  this.r2 = 1-this.r;
+);
+
+function Follower(in) (
+  this.tmp = max(in + this.s * (this.tmp-in),in);
+  this.e <  this.tmp ? (
+    this.e = this.tmp;
+  ) : (
+    this.e = this.r * this.e + this.r2 * this.tmp;
+  );
+);
+
+function Curve(input) (
+  abs(input) < 1 ? input - (2*input^3)*0.3333 + input^6*0.16666 : 0.501;
+);
+
+function FillEnvLut(start,end,step) (
+  this.len = end-start;
+  this.maxVal = this.len * step;
+  this.start = start;
+  this.end = end;
+  this.invStep = 1/step;
+  lutMem = start;
+  this.i = 0;
+  loop(this.len,
+    this.v = this.i * step;
+    lutMem[this.i] = this.v/Curve(this.v);
+    this.i += 1;
+  );
+);
+
+lut0.FillEnvLut(1000,11001,0.01);
+
+function GetLutVal(in) (
+  this.index = max(min(in * this.invStep,this.end),1);
+  this.floorIndex = floor(this.index);
+  lutMem = this.start;
+  this.lo = lutMem[this.floorIndex];
+  this.hi = lutMem[this.floorIndex+1];
+  this.frac = this.index - this.floorIndex;
+  Interpolate(this.lo, this.hi, this.frac);
+);
+
+SplSniffer.timeOut =  srate/4;
+
+function SampleSniffer(input) (
+  this.splCount += 1;
+  this.in.max = max(abs(input),this.in.max);
+  
+  (this.splCount > this.maxscount) ? (
+    this.in.max > 0.00000001 ? (
+      this.out = 1;
+      this.maxscount = SplSniffer.timeOut;
+    ) : (
+      this.out = 0;
+      this.maxscount = 2;
+    );
+    this.in.max = 0;
+    this.splCount = 0;
+  );
+  this.out;
+);
+
+function ProcessSliders() (
+  peak = 10^(Interpolate(0,50,(slider1/10)^0.66)/20);
+  gain = 10^(Interpolate(0,40,(slider2/10)^2)/20);
+  cl = Interpolate(1,10,(slider3/10));
+  emphasis = Interpolate(0,10,(slider4/10));
+  
+  w2 = 1-exp(-1/(Interpolate(15,5,(slider3/10)) / 1000 * srate));
+  
+  mode = slider5;
+  mode == 0 ? (cb1.checked = 1; cb2.checked = 0; cb3.checked = 0;);
+  mode == 1 ? (cb1.checked = 0; cb2.checked = 1; cb3.checked = 0;);
+  mode == 2 ? (cb1.checked = 0; cb2.checked = 0; cb3.checked = 1;);
+);
+
+fr.rms_init(10);
+sr.rms_init(1000);
+
+f0.HFLF_init(60);
+f1.HFLF_init(16000);
+f2.HFLF_init(16000);
+
+f3.HFLF_init(200);
+f4.HFLF_init(400);
+
+w1 = 1-exp(-1/(20 / 1000 * srate));
+w2 = 1-exp(-1/(10 / 1000 * srate));
+w3 = 1-exp(-1/(22.6643 / 1000 * srate));;
+
+mtr.rms_init(0.066);
+peaktmp = 1;
+e.FollowerInit(0,20,20);
+sn.maxscount = 2000;
+sn.out = 1;
+
+hbx = 200; hby = 150;
+
+@slider
+
+s1.value = slider1;
+s2.value = slider2;
+s3.value = slider3;
+s4.value = slider4;
+
+ProcessSliders();
+
+@block
+
+!init ? (
+  max(spl0,spl1) > 0.001 ? (
+    fr.s = sr.s = 1;
+  );
+  init = 1;
+);
+
+@sample
+
+sn.SampleSniffer(abs(spl0)+abs(spl1)) || env < 0.999 ? (
+  
+  in = abs(outL) < abs(outR) ? outR : outL;
+  in += (f1.LFcut(in) * emphasis);
+  in = abs(f0.LFcut(in)) * peak;// + 0.000001;
+  
+  wEnv = e.Follower(in)^2 * 0.2;
+  
+  fr.weight = Interpolate(w2,w1,(1/(wEnv+1)));
+  iEnv = fr.rms(in);
+  
+  fEnv = lut0.GetLutVal(iEnv);
+  fEnv = (driver.s += w3 * (fEnv - driver.s));
+  
+  sEnv = sr.rms(in)^cl + 1;
+  env = max((sEnv * fEnv),sEnv);
+  
+  env = 1/(env);
+  
+  /* Tone Shaping */
+  
+  M = (spl0 + spl1) * 0.5;
+  S = (spl0 - spl1) * 0.5;
+  invEnv = 1-env;
+  mode == 1 ? (
+    boost = f3.HFcut(M);
+    M += boost * invEnv * 0.5;
+    S *= invEnv * 0.5 + 1;
+  );
+  mode == 2 ? (
+    boost = f3.HFcut(M);
+    cut = f4.HFcut(M);
+    M += boost * invEnv;
+    M -= cut * invEnv * 0.708;
+    S *= invEnv * 0.5 + 1;
+  );  
+  spl0 = (M+S);
+  spl1 = (M-S);
+  
+  outL = (spl0 * env * 0.9) + (spl0 * 0.1);
+  outR = (spl1 * env * 0.9) + (spl1 * 0.1);
+  
+  spl0 = outL * gain;
+  spl1 = outR * gain;
+  
+  /* Overflow protection */
+  
+  of = max(abs(spl0),abs(spl1));
+  of = max(of,0.989) - 0.989 + 1;
+  ofe = max(of,ofe*t2000);
+  spl0 /= ofe;
+  spl1 /= ofe;
+
+) : (
+  spl0 *= gain;
+  spl1 *= gain;
+);
+
+mtrEnv = env;
+
+@gfx 400 360
+
+function draw_chkbox(x,y,s,v)
+(
+
+  // Mouse Logic
+  mouse_x >= x && mouse_x <= x+s && mouse_y >= y && mouse_y <= y+s && !this.disabled ? (
+    !mouse_cap ? this.hasEntered = 1;
+    mouse_cap ? this.hasClicked = 1;
+    this.hasEntered && this.hasClicked ? this.canChange = 1;
+  ) : (
+    this.hasEntered = this.hasClicked = this.canChange = 0;
+  );
+  !mouse_cap ? (this.canChange = 0;);
+
+  this.canChange ? (
+    this.checked = 1-this.checked;
+    this.hasEntered = this.hasClicked = this.canChange = 0;
+    slider5 = v;
+    _sliderDirty = 1;
+  );
+  
+  // Checked
+  this.checked ? (
+    gfx_r = 0.9; gfx_g = 0.9; gfx_b = 1;
+    gfx_rect(x+2,y+2,s-4,s-4);
+  );
+    
+  this.checked; 
+);
+
+function draw_pot(x,y,fw,fh,fn,f,t,s,d,id)
+(
+  
+  this.range = abs(f - t);
+  this.steps = this.range / s;  
+  
+  // Mouse Logic
+  mouse_x >= x && mouse_x <= x+fw && mouse_y >= y && mouse_y <= y+fh && !this.disabled ? (
+    !mouse_cap ? this.hasEntered = 1;
+    mouse_cap ? this.hasClicked = 1;
+    mouse_cap & 4 ? this.value = d;
+    this.hasEntered && this.hasClicked ? this.canChange = 1;
+  ) : (
+    this.hasEntered = this.hasClicked = 0;
+  );
+  !mouse_cap ? this.canChange = 0;
+  
+  // Process
+  this.canChange ? (
+    this.value += (this.y_tmp - mouse_y) * s;
+  );
+  
+  this.y_tmp = mouse_y;
+
+  // Update
+  this.value.temp != this.value ? (   
+    this.value = max(this.value,f);
+    this.value = min(this.value,t);
+    this.normalized = this.value * (1/(this.steps * s)) * 0.999;
+    this.rpos = floor((1 - this.normalized) + fn * this.normalized) * fh;
+    
+    _sliderDirty = 1;
+    this.value.temp = this.value;   
+  );
+  
+  this.coordinatelist[0] = 0;
+  this.coordinatelist[1] = this.rpos;
+  this.coordinatelist[2] = this.coordinatelist[6] = fw;
+  this.coordinatelist[3] = this.coordinatelist[7] = fh;
+  this.coordinatelist[4] = x;
+  this.coordinatelist[5] = y;
+  gfx_blitext(id, this.coordinatelist, 0);
+  
+  this.value;
+);
+
+function AnimateNeedle(in,x,y,fw,fh,fn,id)
+(
+  this.aPos = floor((1 - in) + (fn-1) * in) * fh;
+  
+  this.coordinatelist[0] = 0;
+  this.coordinatelist[1] = this.aPos;
+  this.coordinatelist[2] = this.coordinatelist[6] = fw;
+  this.coordinatelist[3] = this.coordinatelist[7] = fh;
+  this.coordinatelist[4] = x;
+  this.coordinatelist[5] = y;
+  gfx_blitext(id, this.coordinatelist, 0);
+  
+);
+
+/* Background */
+
+gfx_r = 0.2; gfx_g = 0.2; gfx_b = 0.2;
+gfx_x = 0; gfx_y = 0;
+gfx_blit(0,1,0);
+gfx_setfont(1,"Arial",13);
+
+/* Needle */
+
+gfx_r = 0; gfx_g = 0; gfx_b = 0;
+gfx_x = hbx; gfx_y = hby;
+
+mtrEnvSm = mtr.rms(1-mtrEnv);
+AnimateNeedle(mtrEnvSm,hbx-116,hby-130,232,148,90,3);
+
+/* Peak */
+
+gfx_r = 0.4; gfx_g = 0.4; gfx_b = 0.4;
+
+mtrEnv <= peaktmp+0.001 ? (
+  peakval = sprintf(#,"%.1f",20*log10(peaktmp = min(mtrEnv,peaktmp)));
+  holdcount = 0;
+) : (
+  holdcount += 1;
+  holdcount > 20 ? (
+    peaktmp *= 1.05;
+    peakval = sprintf(#,"%.1f",20*log10(peaktmp));
+  );
+);
+
+gfx_measurestr(peakval,peakvalW,peakvalH);
+gfx_x = hbx-(peakvalW*0.5); gfx_y = hby-45;
+gfx_drawstr(peakval);
+
+/* Controls */
+
+slider2 = s2.draw_pot(37,192,115,115,100,0,10,0.05,0,1);
+slider1 = s1.draw_pot(248,192,115,115,100,0,10,0.05,0,1);
+slider3 = s3.draw_pot(184,252,35,35,50,0,10,0.1,5,2);
+slider4 = s4.draw_pot(184,183,35,35,50,0,10,0.1,10,2);
+
+_sliderDirty ? (  
+  ProcessSliders();
+  _sliderDirty = 0;
+);
+
+/* Overflow indicator */
+
+gfx_r = 1; gfx_g = 1; gfx_b = 0;
+gfx_a = sqrt(1-1/ofe);
+gfx_circle(94,164,4,1);
+
+/* Option screen */
+
+gfx_r = gfx_g = gfx_b = 1; gfx_a = 1;
+optScreen ? (
+  gfx_x = gfx_y = 0;
+  gfx_blit(4,1,0);
+  cb1.draw_chkbox(169,151,14,0);
+  cb2.draw_chkbox(169,173,14,1);
+  cb3.draw_chkbox(169,195,14,2);
+);
+
+gfx_x = 375; gfx_y = 15; gfx_a = 0.75;
+mouse_x > gfx_x && mouse_x < gfx_x+12 && mouse_y > gfx_y && mouse_y < gfx_y+12 ? (
+  gfx_a = 1;
+  mouse_cap ? (
+    !optScreen.clicked ? (
+      optScreen = 1-optScreen;
+      optScreen.clicked = 1;
+    );
+  ) : (
+    optScreen.clicked = 0;
+  );
+);
+
+gfx_blit(5,1,0);
+
+/* Build string */
+
+gfx_x = 15; gfx_y = 335;
+gfx_r = gfx_g = gfx_b = 1; gfx_a = 0.2;
+gfx_setfont(1,"Arial",12);
+gfx_drawstr(buildStr);
+

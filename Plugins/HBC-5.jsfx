@@ -1,0 +1,721 @@
+desc:HBC-5 5.1 Hybrid Bus Compressor
+version: 1.0
+author: SonicAnomaly
+changelog: init
+provides: hbc5_gfx/*
+
+/*****************************************************
+Copyright (C) 2016 Stige T.
+License: http://jsplugins.supermaailma.net/license.php
+*****************************************************/
+
+EffectName: 5.1 Hybrid Bus Compressor
+VendorString: Sonic Anomaly
+VendorVersion: 1002
+UniqueId: 'HBC5'
+
+slider1:0<-40,0,1>-Threshold L/R
+slider2:0<-40,0,1>-Threshold C
+slider3:0<-40,0,1>-Threshold LFE
+slider4:0<-40,0,1>-Threshold Ls/Rs
+
+slider6:1<0,100,1>-Attack
+slider7:500<20,5000,1>-Release
+slider8:4<1,20,1>-Ratio
+slider9:0<0,20,1>-Knee
+slider10:0.5<0,1,0.1>-RMS/Peak Ratio
+slider11:0<-1,1,0.1>-RMS Time
+slider12:0<0,1,1{SMPTE ITU,FILM}>-Channel Mode
+
+slider14:0<-20,20,1>-Output L/R
+slider15:0<-20,20,1>-Output C
+slider16:0<-20,20,1>-Output LFE
+slider17:0<-20,20,1>-Output Ls/Rs
+
+filename:0,hbc5_gfx/bg.png
+filename:1,hbc5_gfx/sliderknob.png
+filename:2,hbc5_gfx/sur1.png
+filename:3,hbc5_gfx/sur2.png
+resource:0,1,2,3
+
+@init
+
+!"#define VAL(A) (A)" "//";
+
+buildStr = "Build 170206";
+
+t005 = exp(-1/(srate*0.0005));
+t01 = exp(-1/(srate*0.001));
+t05 = exp(-1/(srate*0.005));
+t10 = exp(-1/(srate*0.01));
+t20 = exp(-1/(srate*0.02));
+t50 = exp(-1/(srate*0.05));
+t60 = exp(-1/(srate*0.06));
+t100 = exp(-1/(srate*0.1));
+t200 = exp(-1/(srate*0.2));
+t500 = exp(-1/(srate*0.5));
+t1000 = exp(-1/(srate*1));
+t2000 = exp(-1/(srate*2));
+
+function HFLF_init(freq)
+instance(n0,weight)
+(
+  n0 = 0;
+  weight = 1-exp(-2*$pi*freq/srate);
+);
+
+function HFcut(input)
+instance(out,n0,weight)
+(  
+  out = (n0+=((input-n0)*weight));
+);
+
+function LFcut(input)
+instance(out,n0,weight)
+(
+  out = input - (n0+=((input-n0)*weight));
+);
+
+function Interpolate(A, B, X) (
+  A + ((B-A)*X);
+);
+
+function rms_init(weight_ms)
+instance (weight)(
+  weight = 1-exp(-1/(weight_ms / 1000 * srate));
+);
+
+function rms(input)
+instance (s,rms,weight)(
+  rms = sqrt(s +=  weight * ( input^2 - s ));
+);
+
+function FollowerInit(attack,release,smoothing) (
+  this.a = exp(-1/(srate*attack/1000));
+  this.r = exp(-1/(srate*release/1000));
+  this.s = exp(-1/(srate*smoothing/1000));
+  this.a2 = 1-this.a;
+  this.r2 = 1-this.r;
+  this.maxRelease = this.r;
+  this.minRelease = exp(-1/(srate*(sqrt(release)*5)/1000));
+);
+
+function Follower(in) (
+  this.tmp = max(in + this.s * (this.tmp-in),in);
+  this.e <  this.tmp ? (
+    this.e = this.a * this.e + this.a2 * this.tmp;
+  ) : (
+    this.e = this.r * this.e + this.r2 * this.tmp;
+  );
+);
+
+function Curve(input) (
+  this.dB = 20 * log10( abs(input) + 0.0000001 );
+  this.env = this.dB - min(this.dB,threshCoef)  + 0.0000001;
+  this.env = this.env^2 / (this.env+param.knee);
+  this.env *= ratioCoef;
+  this.env = 10 ^ (this.env/20); 
+);
+
+function FillEnvLut(start,end,step) (
+  this.len = end-start;
+  this.maxVal = this.len * step;
+  this.start = start;
+  this.end = end;
+  this.invStep = 1/step;
+  lutMem = start;
+  this.i = 0;
+  loop(this.len,
+    this.v = this.i * step;
+    lutMem[this.i] = Curve(this.v);
+    this.i += 1;
+  );
+);
+
+function GetLutVal(in) (
+  this.index = max(min(in * this.invStep,this.end),1);
+  this.floorIndex = floor(this.index);
+  lutMem = this.start;
+  this.lo = lutMem[this.floorIndex];
+  this.hi = lutMem[this.floorIndex+1];
+  this.frac = this.index - this.floorIndex;
+  Interpolate(this.lo, this.hi, this.frac);
+);
+
+function SampleSniffer(input) (
+  this.splCount += 1;
+  this.in.max = max(abs(input),this.in.max);
+  
+  (this.splCount > this.maxscount) ? (
+    this.in.max > 0.00000001 ? (
+      this.out = 1;
+      this.maxscount = SplSniffer.timeOut;
+    ) : (
+      this.out = 0;
+      this.maxscount = 10;
+    );
+    this.in.max = 0;
+    this.splCount = 0;
+  );
+  this.out;
+);
+
+function CompressorPeakSlow(in) (
+  this.dB = 20 * log10( abs(in) + 0.0000001 );
+  this.env = this.dB - min(this.dB,threshCoef) + 0.0000001;
+  this.env = this.env^2 / (this.env+knee);
+  this.env *= ratioCoef;
+  this.env = 10 ^ (this.env/20);
+  
+  this.rmod = 1/this.e1.Follower(this.env);
+  this.e0.r = Interpolate(this.e0.minRelease,this.e0.maxRelease,this.rmod);
+  this.e0.r2 = 1-this.e0.r;
+  
+  this.env = this.e0.Follower(this.env);
+);
+
+function CompressorPeak(in,t) (
+  this.sn.SampleSniffer(in) ? (
+    this.env = l0.GetLutVal(abs(in) * t);
+    
+    this.rmod = 1/this.e1.Follower(this.env);
+    this.e0.r = Interpolate(this.e0.minRelease,this.e0.maxRelease,this.rmod);
+    this.e0.r2 = 1-this.e0.r;
+    
+    this.env = this.e0.Follower(this.env);
+  ) : (
+    1;
+  );
+);
+
+
+function CompressorRMS(in,t) (  
+  this.env = l0.GetLutVal(abs(in) * t);
+  this.env = this.r.rms(this.env);
+);
+
+function CompressorComb() (
+  in.L.max = max(abs(in.L),in.L.max);
+  in.R.max = max(abs(in.R),in.R.max);
+  in.C.max = max(abs(in.C),in.C.max);
+  in.LFE.max = max(abs(in.LFE),in.LFE.max);
+  in.Ls.max = max(abs(in.Ls),in.Ls.max);
+  in.Rs.max = max(abs(in.Rs),in.Rs.max);
+  
+  splcount += 1;
+  
+  (splcount > usfactor) ? (
+    envR.L = cr0.CompressorRMS(in.L.max * 3.16, param.threshold1) * param.rbal;
+    envR.R = cr1.CompressorRMS(in.R.max * 3.16, param.threshold1) * param.rbal;
+    envR.C = cr2.CompressorRMS(in.C.max * 3.16, param.threshold2) * param.rbal;
+    envR.LFE = cr3.CompressorRMS(in.LFE.max * 3.16, param.threshold3) * param.rbal;
+    envR.Ls = cr4.CompressorRMS(in.Ls.max * 3.16, param.threshold4) * param.rbal;
+    envR.Rs = cr5.CompressorRMS(in.Rs.max * 3.16, param.threshold4) * param.rbal;
+    splcount = 1; in.L.max = in.R.max = in.C.max = in.LFE.max = in.Ls.max = in.Rs.max = 0;
+  );
+  
+  envP.L = cp0.CompressorPeak(in.L, param.threshold1) * param.pbal;
+  envP.R = cp1.CompressorPeak(in.R, param.threshold1) * param.pbal;
+  envP.C = cp2.CompressorPeak(in.C, param.threshold2) * param.pbal;
+  envP.LFE = cp3.CompressorPeak(in.LFE, param.threshold3) * param.pbal;
+  envP.Ls = cp4.CompressorPeak(in.Ls, param.threshold4) * param.pbal;
+  envP.Rs = cp5.CompressorPeak(in.Rs, param.threshold4) * param.pbal;
+  
+  env.L = envR.L + envP.L;
+  env.R = envR.R + envP.R;
+  env.C = envR.C + envP.C;
+  env.LFE = envR.LFE + envP.LFE;
+  env.Ls = envR.Ls + envP.Ls;
+  env.Rs = envR.Rs + envP.Rs;
+);
+
+function ProcessSliders() (
+
+  param.threshold = 0;
+  param.threshold1 = 10 ^ (-slider1/20);
+  param.threshold2 = 10 ^ (-slider2/20);
+  param.threshold3 = 10 ^ (-slider3/20);
+  param.threshold4 = 10 ^ (-slider4/20);
+  
+  param.attack = slider6;
+  param.release = slider7;
+  param.ratio = slider8;
+  param.knee = slider9;
+  
+  cp0.e0.FollowerInit(param.attack,param.release,40); // <-- mieti smoothing
+  cp0.e1.FollowerInit(0,max(param.release/5,20),20);
+  cp1.e0.FollowerInit(param.attack,param.release,40); // <-- mieti smoothing
+  cp1.e1.FollowerInit(0,max(param.release/5,20),20);
+  cp2.e0.FollowerInit(param.attack,param.release,40); // <-- mieti smoothing
+  cp2.e1.FollowerInit(0,max(param.release/5,20),20);
+  cp3.e0.FollowerInit(param.attack,param.release,40); // <-- mieti smoothing
+  cp3.e1.FollowerInit(0,max(param.release/5,20),20);
+  cp4.e0.FollowerInit(param.attack,param.release,40); // <-- mieti smoothing
+  cp4.e1.FollowerInit(0,max(param.release/5,20),20);
+  cp5.e0.FollowerInit(param.attack,param.release,40); // <-- mieti smoothing
+  cp5.e1.FollowerInit(0,max(param.release/5,20),20);
+  
+  param.rmsTime = (slider11+1)*0.5;
+  
+  param.rmsw = sqrt(Interpolate(param.release/2,param.release*20,param.rmsTime^5))*30;
+  cr0.r.rms_init(param.rmsw/usfactor);
+  cr1.r.rms_init(param.rmsw/usfactor);
+  cr2.r.rms_init(param.rmsw/usfactor);
+  cr3.r.rms_init(param.rmsw/usfactor);
+  cr4.r.rms_init(param.rmsw/usfactor);
+  cr5.r.rms_init(param.rmsw/usfactor);
+  
+  ratioCoef = (1-(1/param.ratio));
+  threshCoef = param.threshold - param.knee;
+  
+  l0.FillEnvLut(1000,40000,0.01);
+  
+  param.pbal = Interpolate(0,1,slider10);
+  param.rbal = Interpolate(1,0,slider10);
+  
+  param.out1 = 10^(slider14/20);
+  param.out2 = 10^(slider15/20);
+  param.out3 = 10^(slider16/20);
+  param.out4 = 10^(slider17/20);
+  
+  param.film = slider12;
+
+);
+
+usfactor = 10;
+cr0.r.s = 1;
+cr1.r.s = 1;
+cp0.sn.maxscount =
+cp1.sn.maxscount =
+cp2.sn.maxscount =
+cp3.sn.maxscount =
+cp4.sn.maxscount =
+cp5.sn.maxscount = 10;
+cp0.e0.e =
+cp1.e0.e =
+cp2.e0.e =
+cp3.e0.e =
+cp4.e0.e =
+cp5.e0.e = 1;
+SplSniffer.timeOut = srate/4;
+
+/* Meter Config */
+
+mtrX = 410;
+mtrY = 5;
+
+m.conf.s =
+m0.conf.s =
+m1.conf.s =
+m2.conf.s =
+m3.conf.s =
+m4.conf.s =
+m5.conf.s =
+m10.conf.s =
+m11.conf.s =
+m12.conf.s =
+m13.conf.s =
+m14.conf.s =
+m15.conf.s =
+1;
+
+m.conf.x = mtrX;
+m0.conf.x = m10.conf.x = 10 + mtrX;
+m1.conf.x = m11.conf.x = 30 + mtrX;
+m2.conf.x = m12.conf.x = 50 + mtrX;
+m3.conf.x = m13.conf.x = 70 + mtrX;
+m4.conf.x = m14.conf.x = 90 + mtrX;
+m5.conf.x = m15.conf.x = 110 + mtrX;
+
+m20.conf.x = 10 + mtrX;
+m21.conf.x = 30 + mtrX;
+m22.conf.x = 50 + mtrX;
+m23.conf.x = 70 + mtrX;
+m24.conf.x = 90 + mtrX;
+m25.conf.x = 110 + mtrX;
+
+@slider
+
+s1.value = slider1;
+s2.value = slider2;
+s3.value = slider3;
+s4.value = slider4;
+
+s6.value = slider6;
+s7.value = slider7;
+s8.value = slider8;
+s9.value = slider9;
+s10.value = slider10;
+s11.value = slider11;
+s12.checked = slider12;
+
+s14.value = slider14;
+s15.value = slider15;
+s16.value = slider16;
+s17.value = slider17;
+
+ProcessSliders();
+
+@block
+
+@sample
+
+!param.film ? (
+  in.L = spl0; in.R = spl1; in.C = spl2; in.LFE = spl3; in.Ls = spl4; in.Rs = spl5; 
+  CompressorComb();
+  spl0 /= env.L; spl1 /= env.R; spl2 /= env.C; spl3 /= env.LFE; spl4 /= env.Ls; spl5 /= env.Rs;
+  spl0 *= param.out1; spl1 *= param.out1; spl2 *= param.out2; spl3 *= param.out3; spl4 *= param.out4; spl5 *= param.out4;
+) : (
+  in.L = spl0; in.R = spl2; in.C = spl1; in.LFE = spl5; in.Ls = spl3; in.Rs = spl4;
+  CompressorComb();
+  spl0 /= env.L; spl2 /= env.R; spl1 /= env.C; spl5 /= env.LFE; spl3 /= env.Ls; spl4 /= env.Rs;
+  spl0 *= param.out1; spl2 *= param.out1; spl1 *= param.out2; spl5 *= param.out3; spl3 *= param.out4; spl4 *= param.out4;
+);
+
+@gfx 590 450
+
+gfx_r = gfx_b = gfx_g = 1;
+gfx_x = gfx_y = 0;
+gfx_blit(0,1,0);
+
+function draw_chkbox(x,y,s,title)
+(
+  // Mouse Logic
+  mouse_x >= x && mouse_x <= x+s && mouse_y >= y && mouse_y <= y+s && !this.disabled ? (
+    !mouse_cap ? this.hasEntered = 1;
+    mouse_cap ? this.hasClicked = 1;
+    this.hasEntered && this.hasClicked ? this.canChange = 1;
+  ) : (
+    this.hasEntered = this.hasClicked = this.canChange = 0;
+  );
+  !mouse_cap ? (this.canChange = 0;);
+
+  this.canChange ? (
+    this.checked = 1-this.checked;
+    this.hasEntered = this.hasClicked = this.canChange = 0;
+    _sliderDirty = 1;
+  );
+  
+  // Checked
+  this.checked ? (
+    gfx_r = 0.9; gfx_g = 0.9; gfx_b = 1;
+    gfx_rect(x+2,y+2,s-4,s-4);
+  );
+    
+  this.checked; 
+);
+
+function draw_hslider(x,y,w,h,f,t,s,d,unit,title)
+(
+    
+  // Knob parameters
+  this.knob.w = 26;
+  this.knob.hw = this.knob.w * 0.5;
+  this.range = abs(f - t);
+
+  // Mouse Logic
+  mouse_x >= x && mouse_x <= x+w && mouse_y >= y && mouse_y <= y+h && !this.disabled ? (
+    !mouse_cap ? this.hasEntered = 1;
+    mouse_cap ? this.hasClicked = 1;
+    this.hasEntered && this.hasClicked ? this.canChange = 1;
+  ) : (
+    this.hasEntered = this.hasClicked = 0;
+  );
+  !mouse_cap ? (this.canChange = 0; this.init_x = 0;);
+  
+  // Process
+  this.canChange ? (
+    mouse_cap & 8 ? (
+      !this.init_x ? this.init_x = mouse_x;
+      this.knob.input = (this.init_x - x - this.knob.w) + (((mouse_x/this.init_x) - 1) * 100 + this.knob.hw);
+    ) : (
+      this.knob.input = (mouse_x - x - this.knob.hw);
+      this.init_x = 0;
+    );
+    
+    this.knob.input.normalized = this.knob.input / (w-this.knob.w-2);
+    this.value.rect = this.range*this.knob.input.normalized;
+    this.step = 1/s;
+    this.value.rect = ceil(this.value.rect * this.step) / this.step;
+    this.value = this.value.rect + f;
+    
+    mouse_cap & 4 ? this.value = d;
+    _sliderDirty = 1;
+  );
+  
+  this.value = max(min(this.value,t),f);
+  this.knob.pos = (this.range + this.value - t) / (this.range) * (w-this.knob.w-2);
+
+  // Knob
+  gfx_x = x+1+this.knob.pos; gfx_y = y+1;
+  gfx_blit(1,1,0);
+
+  // Readout
+  !this.hidereadout ? (
+    gfx_r = gfx_g = gfx_b = 0.8;
+    this.str2 = strcat(sprintf(#,"%.2f",this.value),unit);
+    gfx_measurestr(this.str2,this.str2.w,this.str2.h);
+    gfx_x = x + w + 5; gfx_y = y + (h * 0.5) - (this.str2.h * 0.5);
+    gfx_drawstr(this.str2);
+  );
+    
+  this.value;
+);
+
+function vert_meter_layout()
+(
+  //this.conf.x = 10;
+  this.conf.y = 40 + mtrY;
+  this.conf.w = 130;
+  this.conf.h = 300;
+  //this.conf.s = 0.3;
+  
+  !this.mtr.20 ? (
+    this.mtr.1 = (1 - 0.891^this.conf.s) * this.conf.h;
+    this.mtr.3 = (1 - 0.708^this.conf.s) * this.conf.h;
+    this.mtr.6 = (1 - 0.501^this.conf.s) * this.conf.h;
+    this.mtr.10 = (1 - 0.316^this.conf.s) * this.conf.h;
+    this.mtr.15 = (1 - 0.178^this.conf.s) * this.conf.h;
+    this.mtr.20 = (1 - 0.1^this.conf.s) * this.conf.h;
+    this.mtr.30 = (1 - 0.0316^this.conf.s) * this.conf.h;
+    this.mtr.40 = (1 - 0.01^this.conf.s) * this.conf.h;
+    this.mtr.60 = (1 - 0.001^this.conf.s) * this.conf.h;
+    this.mtr.80 = (1 - 0.0001^this.conf.s) * this.conf.h;
+  );
+
+  gfx_r = 1; gfx_g = 1; gfx_b = 1; gfx_a = 0.1;
+  gfx_rect(this.conf.x, this.conf.y, this.conf.w, this.conf.h);
+  gfx_r = 0; gfx_g = 0; gfx_b = 0; gfx_a = 1;
+  gfx_rect(this.conf.x + 1, this.conf.y + 1, this.conf.w - 2, this.conf.h-2);
+  
+  gfx_a = 0.4;
+  gfx_r = 0; gfx_g = 1; gfx_b = 0;
+  gfx_rect(this.conf.x + 1, this.conf.y + 1, this.conf.w - 2, this.mtr.3);
+  gfx_r = 1; gfx_g = 0.5; gfx_b = 0;
+  gfx_rect(this.conf.x + 1, this.conf.y + this.mtr.3, this.conf.w - 2, this.mtr.6-this.mtr.3);  
+  gfx_r = 1; gfx_g = 0; gfx_b = 0;
+  gfx_rect(this.conf.x + 1, this.conf.y + this.mtr.6, this.conf.w - 2, this.conf.h-this.mtr.6-1);
+      
+  gfx_r = 1; gfx_g = 1; gfx_b = 1; gfx_a = 1;
+  
+  gfx_rect(this.conf.x+this.conf.w, this.conf.y, 5, 1);
+  gfx_x = this.conf.x + this.conf.w + 6; gfx_y = this.conf.y - 1;
+  gfx_drawstr("0");
+  
+  gfx_rect(this.conf.x+1, this.conf.y + this.mtr.1, this.conf.w + 4, 1);
+  gfx_x = this.conf.x + this.conf.w + 6; gfx_y = this.conf.y + this.mtr.1 - 1;
+  gfx_drawstr("1");
+  
+  gfx_rect(this.conf.x+1, this.conf.y + this.mtr.3, this.conf.w + 4, 1);
+  gfx_x = this.conf.x + this.conf.w + 6; gfx_y = this.conf.y + this.mtr.3 - 1;
+  gfx_drawstr("3");
+  
+  gfx_rect(this.conf.x+1, this.conf.y + this.mtr.6, this.conf.w + 4, 1);
+  gfx_x = this.conf.x + this.conf.w + 6; gfx_y = this.conf.y + this.mtr.6 - 1;
+  gfx_drawstr("6");
+  
+  gfx_rect(this.conf.x+1, this.conf.y + this.mtr.10, this.conf.w + 4, 1);
+  gfx_x = this.conf.x + this.conf.w + 6; gfx_y = this.conf.y + this.mtr.10 - 1;
+  gfx_drawstr("10");
+  
+  gfx_rect(this.conf.x+1, this.conf.y + this.mtr.15, this.conf.w + 4, 1);
+  gfx_x = this.conf.x + this.conf.w + 6; gfx_y = this.conf.y + this.mtr.15 - 1;
+  gfx_drawstr("15");
+  
+  this.conf.s <= 1.5 ? (
+    gfx_rect(this.conf.x+1, this.conf.y + this.mtr.20, this.conf.w + 4, 1);
+    gfx_x = this.conf.x + this.conf.w + 6; gfx_y = this.conf.y + this.mtr.20 - 1;
+    gfx_drawstr("20");
+  );
+  this.conf.s <= 1 ? (
+    gfx_rect(this.conf.x+1, this.conf.y + this.mtr.30, this.conf.w + 4, 1);
+    gfx_x = this.conf.x + this.conf.w + 6; gfx_y = this.conf.y + this.mtr.30 - 1;
+    gfx_drawstr("30");
+  );
+  this.conf.s <= 0.7 ? (
+    gfx_rect(this.conf.x+1, this.conf.y + this.mtr.40, this.conf.w + 4, 1);
+    gfx_x = this.conf.x + this.conf.w + 6; gfx_y = this.conf.y + this.mtr.40 - 1;
+    gfx_drawstr("40");
+  );
+  this.conf.s <= 0.5 ? (
+    gfx_rect(this.conf.x+1, this.conf.y + this.mtr.60, this.conf.w + 4, 1);
+    gfx_x = this.conf.x + this.conf.w + 6; gfx_y = this.conf.y + this.mtr.60 - 1;
+    gfx_drawstr("60");
+  );
+  this.conf.s <= 0.3 ? (
+    gfx_rect(this.conf.x+1, this.conf.y + this.mtr.80, this.conf.w + 4, 1);
+    gfx_x = this.conf.x + this.conf.w + 6; gfx_y = this.conf.y + this.mtr.80 - 1;
+    gfx_drawstr("80");
+  );
+  
+  gfx_r = 0; gfx_g = 0; gfx_b = 0; gfx_a = 0.8;
+  gfx_rect(this.conf.x + 1, this.conf.y + 1, this.conf.w - 2, this.conf.h - 2);
+
+);
+
+function vert_meter_reduction(input)
+(  
+  //this.conf.x = 10;
+  this.conf.y = 40 + mtrY;
+  this.conf.w = 10;
+  this.conf.h = 300;
+  //this.conf.s = 0.3;
+  this.conf.phcoeff = 100;
+  this.conf.phfallspd = 3;
+      
+  this.mtr.in = this.conf.h - min( (input^this.conf.s) * this.conf.h, this.conf.h -1 ) -1;
+  this.mtr.sgn = this.mtr.in; 
+  
+  //gfx_r = 0; gfx_g = 0.85; gfx_b = 0;
+  gfx_rect(this.conf.x, this.conf.y + 1, this.conf.w, this.mtr.sgn);
+  
+  this.mtr.peak <= this.mtr.sgn ? (
+    this.mtr.peak = this.mtr.sgn;
+    this.mtr.tmp = 0;
+  ) : (
+    this.mtr.tmp += 1;
+    this.mtr.tmp > this.conf.phcoeff ? (
+      this.mtr.peak -= this.conf.phfallspd;
+    );
+  );
+  
+  this.mtr.peak = max(this.mtr.peak,0);
+    
+  gfx_rect(this.conf.x, this.conf.y + 1 + this.mtr.peak, this.conf.w, 1);
+  
+);
+
+function meter_reduction_readout(input)
+(  
+  //this.conf.x = 10;
+  this.conf.y = 25 + mtrY;
+  this.conf.phcoeff = 20;
+  this.conf.phfallspd = 0.1;
+  
+  this.mtr.in = max(1/input,1);
+  
+  this.mtr.sgn <= this.mtr.in ? (
+    this.mtr.sgn = this.mtr.in;
+    this.mtr.count = 0;
+  ) : (
+    this.mtr.count += 1;
+    this.mtr.count > this.conf.phcoeff ? (
+      //this.mtr.sgn -= (this.mtr.sgn * this.conf.phfallspd);
+      this.mtr.sgn = this.mtr.in;
+    );
+  );
+  
+  gfx_r = 1; gfx_g = 1; gfx_b = 1;
+  this.mtr.db = 20 * log10(1/this.mtr.sgn);
+  this.mtr.readout = sprintf(#,"%.1f",this.mtr.db);
+  gfx_measurestr(this.mtr.readout,this.mtr.readout.width,this.mtr.readout.heigth);
+  gfx_x = this.conf.x - (this.mtr.readout.width / 2) + 5; gfx_y = this.conf.y;
+  gfx_drawstr(this.mtr.readout);
+        
+);
+
+gfx_setfont(1,"Arial",14);
+
+slider1 = s1.draw_hslider(120,40,200,17,-40,0,0.5,0,"dB","L/R");
+slider2 = s2.draw_hslider(120,60,200,17,-40,0,0.5,0,"dB","C");
+slider3 = s3.draw_hslider(120,80,200,17,-40,0,0.5,0,"dB","LFE");
+slider4 = s4.draw_hslider(120,100,200,17,-40,0,0.5,0,"dB","Ls/Rs");
+
+slider6 = s6.draw_hslider(120,150,200,17,0,100,0.5,1,"ms","ATTACK");
+slider7 = s7.draw_hslider(120,170,200,17,20,2000,1,500,"ms","RELEASE");
+slider8 = s8.draw_hslider(120,190,200,17,1,20,0.5,4,":1","RATIO");
+slider9 = s9.draw_hslider(120,210,200,17,0,30,1,0,"dB","KNEE");
+slider10 = s10.draw_hslider(120,230,200,17,0,1,0.01,0.5,"","RMS/PEAK RAT.");
+slider11 = s11.draw_hslider(120,250,200,17,-1,1,0.1,0,"","RMS TIME");
+slider12 = s12.draw_chkbox(527,412,11,"SMPTE ITU/FILM");
+
+slider14 = s14.draw_hslider(120,300,200,17,-20,20,0.5,0,"dB","L/R");
+slider15 = s15.draw_hslider(120,320,200,17,-20,20,0.5,0,"dB","C");
+slider16 = s16.draw_hslider(120,340,200,17,-20,20,0.5,0,"dB","LFE");
+slider17 = s17.draw_hslider(120,360,200,17,-20,20,0.5,0,"dB","Ls/Rs");
+
+_sliderDirty ? (  
+  ProcessSliders();
+  _sliderDirty = 0;
+);
+
+// Calculate meters
+
+mtr.peakLin.L = 1/env.L;
+mtr.rmsLin.L = 1/(envR.L+(1-param.rbal));
+mtr.peakLin.R = 1/env.R;
+mtr.rmsLin.R = 1/(envR.R+(1-param.rbal));
+
+mtr.peakLin.C = 1/env.C;
+mtr.rmsLin.C = 1/(envR.C+(1-param.rbal));
+mtr.peakLin.LFE = 1/env.LFE;
+mtr.rmsLin.LFE = 1/(envR.LFE+(1-param.rbal));
+
+mtr.peakLin.Ls = 1/env.Ls;
+mtr.rmsLin.Ls = 1/(envR.Ls+(1-param.rbal));
+mtr.peakLin.Rs = 1/env.Rs;
+mtr.rmsLin.Rs = 1/(envR.Rs+(1-param.rbal));
+
+gfx_setfont(1,"Arial",12);
+
+//m.vert_meter_layout();
+
+gfx_r = 0.4; gfx_b = 0.4; gfx_g = 0.9;
+!param.film ? (
+  gfx_a = 0.5;
+  m0.vert_meter_reduction(mtr.peakLin.L);
+  m1.vert_meter_reduction(mtr.peakLin.R);
+  m2.vert_meter_reduction(mtr.peakLin.C);
+  m3.vert_meter_reduction(mtr.peakLin.LFE);
+  m4.vert_meter_reduction(mtr.peakLin.Rs);
+  m5.vert_meter_reduction(mtr.peakLin.Rs);
+  gfx_a = 1;
+  m10.vert_meter_reduction(mtr.rmsLin.L);
+  m11.vert_meter_reduction(mtr.rmsLin.R);
+  m12.vert_meter_reduction(mtr.rmsLin.C);
+  m13.vert_meter_reduction(mtr.rmsLin.LFE);
+  m14.vert_meter_reduction(mtr.rmsLin.Ls);
+  m15.vert_meter_reduction(mtr.rmsLin.Rs);
+  
+  m20.meter_reduction_readout(mtr.peakLin.L);
+  m21.meter_reduction_readout(mtr.peakLin.R);
+  m22.meter_reduction_readout(mtr.peakLin.C);
+  m23.meter_reduction_readout(mtr.peakLin.LFE);
+  m24.meter_reduction_readout(mtr.peakLin.Ls);
+  m25.meter_reduction_readout(mtr.peakLin.Rs);
+  
+  gfx_x = mtrX + 10; gfx_y = mtrY + 343;
+  gfx_blit(2,1,0);
+) : (
+  gfx_a = 0.5;
+  m0.vert_meter_reduction(mtr.peakLin.L);
+  m1.vert_meter_reduction(mtr.peakLin.C);
+  m2.vert_meter_reduction(mtr.peakLin.R);
+  m3.vert_meter_reduction(mtr.peakLin.Ls);
+  m4.vert_meter_reduction(mtr.peakLin.Rs);
+  m5.vert_meter_reduction(mtr.peakLin.LFE);
+  gfx_a = 1;
+  m10.vert_meter_reduction(mtr.rmsLin.L);
+  m11.vert_meter_reduction(mtr.rmsLin.C);
+  m12.vert_meter_reduction(mtr.rmsLin.R);
+  m13.vert_meter_reduction(mtr.rmsLin.Ls);
+  m14.vert_meter_reduction(mtr.rmsLin.Rs);
+  m15.vert_meter_reduction(mtr.rmsLin.LFE);
+  
+  m20.meter_reduction_readout(mtr.peakLin.L);
+  m21.meter_reduction_readout(mtr.peakLin.C);
+  m22.meter_reduction_readout(mtr.peakLin.R);
+  m23.meter_reduction_readout(mtr.peakLin.Ls);
+  m24.meter_reduction_readout(mtr.peakLin.Rs);
+  m25.meter_reduction_readout(mtr.peakLin.LFE);
+  
+  gfx_x = mtrX + 10; gfx_y = mtrY + 343;
+  gfx_blit(3,1,0);
+);
+
+/* Build string */
+
+gfx_x = 317; gfx_y = 425;
+gfx_r = gfx_g = gfx_b = 1; gfx_a = 0.2;
+gfx_setfont(1,"Arial",12);
+gfx_drawstr(buildStr);
