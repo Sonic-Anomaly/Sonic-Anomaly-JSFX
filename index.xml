@@ -1,144 +1,144 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="SonicAnomaly JSFX" commit="f14cef59b86bd58c3e1e6a5bf982ff71c302443f">
+<index version="1" name="SonicAnomaly JSFX" commit="d6279d6206e0b12d44fbe81e27aa421333b474ba">
   <category name="Plugins">
     <reapack name="5.1 Master Limiter.jsfx" type="effect" desc="5.1 Master Limiter">
       <version name="1.0" author="SonicAnomaly" time="2017-05-29T18:10:24Z">
         <changelog><![CDATA[init]]></changelog>
-        <source>https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/5.1%20Master%20Limiter.jsfx</source>
-        <source file="5.1 Master Limiter/5.1 Master Limiter.pdf">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/5.1%20Master%20Limiter/5.1%20Master%20Limiter.pdf</source>
+        <source>https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/5.1%20Master%20Limiter.jsfx</source>
+        <source file="5.1 Master Limiter/5.1 Master Limiter.pdf">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/5.1%20Master%20Limiter/5.1%20Master%20Limiter.pdf</source>
       </version>
     </reapack>
     <reapack name="Bass Professor Mark II.jsfx" type="effect" desc="Bass Professor Mark II">
       <version name="1.0" author="SonicAnomaly" time="2017-05-29T18:10:24Z">
         <changelog><![CDATA[init]]></changelog>
-        <source>https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/Bass%20Professor%20Mark%20II.jsfx</source>
-        <source file="bassprofessormk2_gfx/bg.png">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/bassprofessormk2_gfx/bg.png</source>
-        <source file="bassprofessormk2_gfx/vsliderhandle.png">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/bassprofessormk2_gfx/vsliderhandle.png</source>
-        <source file="docs/Bass Professor Mark II.pdf">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/docs/Bass%20Professor%20Mark%20II.pdf</source>
+        <source>https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/Bass%20Professor%20Mark%20II.jsfx</source>
+        <source file="bassprofessormk2_gfx/bg.png">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/bassprofessormk2_gfx/bg.png</source>
+        <source file="bassprofessormk2_gfx/vsliderhandle.png">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/bassprofessormk2_gfx/vsliderhandle.png</source>
+        <source file="docs/Bass Professor Mark II.pdf">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/docs/Bass%20Professor%20Mark%20II.pdf</source>
       </version>
     </reapack>
     <reapack name="Bassprofessor.jsfx" type="effect" desc="Bass Professor">
       <version name="1.0" author="SonicAnomaly" time="2017-05-29T18:10:24Z">
         <changelog><![CDATA[init]]></changelog>
-        <source>https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/Bassprofessor.jsfx</source>
-        <source file="bassprofessor_gfx/bg.png">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/bassprofessor_gfx/bg.png</source>
-        <source file="bassprofessor_gfx/knob.png">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/bassprofessor_gfx/knob.png</source>
-        <source file="bassprofessor_gfx/knob2.png">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/bassprofessor_gfx/knob2.png</source>
-        <source file="bassprofessor_gfx/knob3.png">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/bassprofessor_gfx/knob3.png</source>
-        <source file="bassprofessor_gfx/led.png">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/bassprofessor_gfx/led.png</source>
+        <source>https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/Bassprofessor.jsfx</source>
+        <source file="bassprofessor_gfx/bg.png">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/bassprofessor_gfx/bg.png</source>
+        <source file="bassprofessor_gfx/knob.png">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/bassprofessor_gfx/knob.png</source>
+        <source file="bassprofessor_gfx/knob2.png">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/bassprofessor_gfx/knob2.png</source>
+        <source file="bassprofessor_gfx/knob3.png">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/bassprofessor_gfx/knob3.png</source>
+        <source file="bassprofessor_gfx/led.png">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/bassprofessor_gfx/led.png</source>
       </version>
     </reapack>
     <reapack name="HBC-2.jsfx" type="effect" desc="HBC-2 Stereo Hybrid Bus Compressor">
       <version name="1.0" author="SonicAnomaly" time="2017-05-29T18:10:24Z">
         <changelog><![CDATA[init]]></changelog>
-        <source>https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/HBC-2.jsfx</source>
-        <source file="hbc2_gfx/bg.png">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/hbc2_gfx/bg.png</source>
-        <source file="hbc2_gfx/lr.png">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/hbc2_gfx/lr.png</source>
-        <source file="hbc2_gfx/ms.png">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/hbc2_gfx/ms.png</source>
-        <source file="hbc2_gfx/sliderknob.png">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/hbc2_gfx/sliderknob.png</source>
+        <source>https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/HBC-2.jsfx</source>
+        <source file="hbc2_gfx/bg.png">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/hbc2_gfx/bg.png</source>
+        <source file="hbc2_gfx/lr.png">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/hbc2_gfx/lr.png</source>
+        <source file="hbc2_gfx/ms.png">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/hbc2_gfx/ms.png</source>
+        <source file="hbc2_gfx/sliderknob.png">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/hbc2_gfx/sliderknob.png</source>
       </version>
     </reapack>
     <reapack name="HBC-5.jsfx" type="effect" desc="HBC-5 5.1 Hybrid Bus Compressor">
       <version name="1.0" author="SonicAnomaly" time="2017-05-29T18:10:24Z">
         <changelog><![CDATA[init]]></changelog>
-        <source>https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/HBC-5.jsfx</source>
-        <source file="hbc5_gfx/bg.png">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/hbc5_gfx/bg.png</source>
-        <source file="hbc5_gfx/lr.png">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/hbc5_gfx/lr.png</source>
-        <source file="hbc5_gfx/ms.png">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/hbc5_gfx/ms.png</source>
-        <source file="hbc5_gfx/sliderknob.png">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/hbc5_gfx/sliderknob.png</source>
-        <source file="hbc5_gfx/sur1.png">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/hbc5_gfx/sur1.png</source>
-        <source file="hbc5_gfx/sur2.png">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/hbc5_gfx/sur2.png</source>
+        <source>https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/HBC-5.jsfx</source>
+        <source file="hbc5_gfx/bg.png">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/hbc5_gfx/bg.png</source>
+        <source file="hbc5_gfx/lr.png">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/hbc5_gfx/lr.png</source>
+        <source file="hbc5_gfx/ms.png">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/hbc5_gfx/ms.png</source>
+        <source file="hbc5_gfx/sliderknob.png">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/hbc5_gfx/sliderknob.png</source>
+        <source file="hbc5_gfx/sur1.png">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/hbc5_gfx/sur1.png</source>
+        <source file="hbc5_gfx/sur2.png">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/hbc5_gfx/sur2.png</source>
       </version>
     </reapack>
     <reapack name="Leet Delay 2.jsfx" type="effect" desc="Leet Delay 2">
       <version name="1.0" author="SonicAnomaly" time="2017-05-29T18:10:24Z">
         <changelog><![CDATA[init]]></changelog>
-        <source>https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/Leet%20Delay%202.jsfx</source>
-        <source file="leet_delay_gfx/bg.png">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/leet_delay_gfx/bg.png</source>
-        <source file="leet_delay_gfx/knob_but.png">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/leet_delay_gfx/knob_but.png</source>
-        <source file="leet_delay_gfx/knob_sm.png">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/leet_delay_gfx/knob_sm.png</source>
+        <source>https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/Leet%20Delay%202.jsfx</source>
+        <source file="leet_delay_gfx/bg.png">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/leet_delay_gfx/bg.png</source>
+        <source file="leet_delay_gfx/knob_but.png">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/leet_delay_gfx/knob_but.png</source>
+        <source file="leet_delay_gfx/knob_sm.png">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/leet_delay_gfx/knob_sm.png</source>
       </version>
     </reapack>
     <reapack name="QuadraCom.jsfx" type="effect" desc="QuadraCom">
       <version name="1.0" author="SonicAnomaly" time="2017-05-29T18:10:24Z">
         <changelog><![CDATA[init]]></changelog>
-        <source>https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/QuadraCom.jsfx</source>
-        <source file="quadracom_gfx/bg.png">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/quadracom_gfx/bg.png</source>
-        <source file="quadracom_gfx/sliderknob.png">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/quadracom_gfx/sliderknob.png</source>
-        <source file="docs/QuadraCom.pdf">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/docs/QuadraCom.pdf</source>
+        <source>https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/QuadraCom.jsfx</source>
+        <source file="quadracom_gfx/bg.png">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/quadracom_gfx/bg.png</source>
+        <source file="quadracom_gfx/sliderknob.png">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/quadracom_gfx/sliderknob.png</source>
+        <source file="docs/QuadraCom.pdf">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/docs/QuadraCom.pdf</source>
       </version>
     </reapack>
     <reapack name="SEGX2 Gate.jsfx" type="effect" desc="SEGX2 Gate">
       <version name="1.0" author="SonicAnomaly" time="2017-05-29T18:10:24Z">
         <changelog><![CDATA[init]]></changelog>
-        <source>https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/SEGX2%20Gate.jsfx</source>
-        <source file="seg_gfx/bg.png">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/seg_gfx/bg.png</source>
-        <source file="seg_gfx/knob_sm.png">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/seg_gfx/knob_sm.png</source>
+        <source>https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/SEGX2%20Gate.jsfx</source>
+        <source file="seg_gfx/bg.png">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/seg_gfx/bg.png</source>
+        <source file="seg_gfx/knob_sm.png">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/seg_gfx/knob_sm.png</source>
       </version>
     </reapack>
     <reapack name="Skope2.jsfx" type="effect" desc="Skope II [Build 160930]">
       <version name="1.0" author="SonicAnomaly" time="2017-05-29T18:10:24Z">
         <changelog><![CDATA[init]]></changelog>
-        <source>https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/Skope2.jsfx</source>
+        <source>https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/Skope2.jsfx</source>
       </version>
     </reapack>
     <reapack name="SLAX.jsfx" type="effect" desc="S.LA.X">
       <version name="1.0" author="SonicAnomaly" time="2017-05-29T18:10:24Z">
         <changelog><![CDATA[init]]></changelog>
-        <source>https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/SLAX.jsfx</source>
-        <source file="slax_gfx/bg.png">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/slax_gfx/bg.png</source>
-        <source file="slax_gfx/bigpot.png">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/slax_gfx/bigpot.png</source>
-        <source file="slax_gfx/needles.png">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/slax_gfx/needles.png</source>
-        <source file="slax_gfx/opt.png">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/slax_gfx/opt.png</source>
-        <source file="slax_gfx/optbut.png">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/slax_gfx/optbut.png</source>
-        <source file="slax_gfx/prepot.png">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/slax_gfx/prepot.png</source>
+        <source>https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/SLAX.jsfx</source>
+        <source file="slax_gfx/bg.png">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/slax_gfx/bg.png</source>
+        <source file="slax_gfx/bigpot.png">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/slax_gfx/bigpot.png</source>
+        <source file="slax_gfx/needles.png">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/slax_gfx/needles.png</source>
+        <source file="slax_gfx/opt.png">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/slax_gfx/opt.png</source>
+        <source file="slax_gfx/optbut.png">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/slax_gfx/optbut.png</source>
+        <source file="slax_gfx/prepot.png">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/slax_gfx/prepot.png</source>
       </version>
     </reapack>
     <reapack name="Stero2SurroundRotator.jsfx" type="effect" desc="Stereo To Surround Rotator [Build 20151002]">
       <version name="1.0" author="SonicAnomaly" time="2017-05-29T18:10:24Z">
         <changelog><![CDATA[init]]></changelog>
-        <source>https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/Stero2SurroundRotator.jsfx</source>
+        <source>https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/Stero2SurroundRotator.jsfx</source>
       </version>
     </reapack>
     <reapack name="Surround Pan 2.jsfx" type="effect" desc="Surround Pan 2.1">
       <version name="1.0" author="SonicAnomaly" time="2017-05-29T18:10:24Z">
         <changelog><![CDATA[init]]></changelog>
-        <source>https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/Surround%20Pan%202.jsfx</source>
-        <source file="surroundpan2_gfx/bg.png">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/surroundpan2_gfx/bg.png</source>
-        <source file="surroundpan2_gfx/radar.png">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/surroundpan2_gfx/radar.png</source>
-        <source file="surroundpan2_gfx/sliderknob.png">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/surroundpan2_gfx/sliderknob.png</source>
-        <source file="docs/Surround Pan.pdf">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/docs/Surround%20Pan.pdf</source>
+        <source>https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/Surround%20Pan%202.jsfx</source>
+        <source file="surroundpan2_gfx/bg.png">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/surroundpan2_gfx/bg.png</source>
+        <source file="surroundpan2_gfx/radar.png">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/surroundpan2_gfx/radar.png</source>
+        <source file="surroundpan2_gfx/sliderknob.png">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/surroundpan2_gfx/sliderknob.png</source>
+        <source file="docs/Surround Pan.pdf">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/docs/Surround%20Pan.pdf</source>
       </version>
     </reapack>
     <reapack name="Transpire.jsfx" type="effect" desc="Transpire">
       <version name="1.0" author="SonicAnomaly" time="2017-05-29T18:10:24Z">
         <changelog><![CDATA[init]]></changelog>
-        <source>https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/Transpire.jsfx</source>
-        <source file="transpire_gfx/bg.png">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/transpire_gfx/bg.png</source>
-        <source file="transpire_gfx/clip.png">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/transpire_gfx/clip.png</source>
-        <source file="transpire_gfx/credits.png">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/transpire_gfx/credits.png</source>
-        <source file="transpire_gfx/knob_1.png">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/transpire_gfx/knob_1.png</source>
-        <source file="transpire_gfx/knob_2.png">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/transpire_gfx/knob_2.png</source>
-        <source file="transpire_gfx/knob_3.png">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/transpire_gfx/knob_3.png</source>
-        <source file="transpire_gfx/knob_4.png">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/transpire_gfx/knob_4.png</source>
+        <source>https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/Transpire.jsfx</source>
+        <source file="transpire_gfx/bg.png">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/transpire_gfx/bg.png</source>
+        <source file="transpire_gfx/clip.png">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/transpire_gfx/clip.png</source>
+        <source file="transpire_gfx/credits.png">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/transpire_gfx/credits.png</source>
+        <source file="transpire_gfx/knob_1.png">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/transpire_gfx/knob_1.png</source>
+        <source file="transpire_gfx/knob_2.png">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/transpire_gfx/knob_2.png</source>
+        <source file="transpire_gfx/knob_3.png">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/transpire_gfx/knob_3.png</source>
+        <source file="transpire_gfx/knob_4.png">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/transpire_gfx/knob_4.png</source>
       </version>
     </reapack>
     <reapack name="TriLeveler2.jsfx" type="effect" desc="TriLeveler2">
       <version name="1.0" author="SonicAnomaly" time="2017-05-29T18:10:24Z">
         <changelog><![CDATA[init]]></changelog>
-        <source>https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/TriLeveler2.jsfx</source>
-        <source file="trileveler_gfx/bg.png">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/trileveler_gfx/bg.png</source>
-        <source file="trileveler_gfx/conf.png">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/trileveler_gfx/conf.png</source>
-        <source file="trileveler_gfx/knob_sm.png">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/trileveler_gfx/knob_sm.png</source>
-        <source file="docs/TriLeveler2.pdf">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/docs/TriLeveler2.pdf</source>
+        <source>https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/TriLeveler2.jsfx</source>
+        <source file="trileveler_gfx/bg.png">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/trileveler_gfx/bg.png</source>
+        <source file="trileveler_gfx/conf.png">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/trileveler_gfx/conf.png</source>
+        <source file="trileveler_gfx/knob_sm.png">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/trileveler_gfx/knob_sm.png</source>
+        <source file="docs/TriLeveler2.pdf">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/docs/TriLeveler2.pdf</source>
       </version>
     </reapack>
     <reapack name="VOLA2.jsfx" type="effect" desc="VOLA2">
       <version name="1.0" author="SonicAnomaly" time="2017-05-29T18:10:24Z">
         <changelog><![CDATA[init]]></changelog>
-        <source>https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/VOLA2.jsfx</source>
-        <source file="vola2_gfx/bg.png">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/vola2_gfx/bg.png</source>
-        <source file="vola2_gfx/sliderknob.png">https://github.com/MichaelPilyavskiy/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/vola2_gfx/sliderknob.png</source>
+        <source>https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/VOLA2.jsfx</source>
+        <source file="vola2_gfx/bg.png">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/vola2_gfx/bg.png</source>
+        <source file="vola2_gfx/sliderknob.png">https://github.com/Sonic-Anomaly/Sonic-Anomaly-JSFX/raw/f14cef59b86bd58c3e1e6a5bf982ff71c302443f/Plugins/vola2_gfx/sliderknob.png</source>
       </version>
     </reapack>
   </category>
